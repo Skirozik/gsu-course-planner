@@ -1,0 +1,275 @@
+{
+  "metadata": {
+    "major": "Nursing",
+    "degree_type": "BS",
+    "university": "Georgia State University",
+    "catalog_year": "2025-2026",
+    "total_credits_required": 120,
+    "description": "Bachelor of Science in Nursing"
+  },
+  "degree_requirements": {
+    "core_courses": [
+      {
+        "course_code": "NURS 1200",
+        "course_name": "Fundamentals of Nursing I",
+        "credits": 4,
+        "required": true,
+        "description": "Introduction to nursing practice, basic patient care, and healthcare systems."
+      },
+      {
+        "course_code": "NURS 2200",
+        "course_name": "Fundamentals of Nursing II",
+        "credits": 4,
+        "required": true,
+        "description": "Advanced nursing skills and patient assessment techniques."
+      },
+      {
+        "course_code": "NURS 3300",
+        "course_name": "Medical-Surgical Nursing I",
+        "credits": 4,
+        "required": true,
+        "description": "Nursing care for adults with acute and chronic illnesses."
+      },
+      {
+        "course_code": "NURS 3310",
+        "course_name": "Medical-Surgical Nursing II",
+        "credits": 4,
+        "required": true,
+        "description": "Continuation of medical-surgical nursing with complex conditions."
+      },
+      {
+        "course_code": "NURS 3400",
+        "course_name": "Pediatric Nursing",
+        "credits": 3,
+        "required": true,
+        "description": "Nursing care for infants, children, and adolescents."
+      },
+      {
+        "course_code": "NURS 3500",
+        "course_name": "Maternal-Child Health Nursing",
+        "credits": 4,
+        "required": true,
+        "description": "Nursing care during pregnancy, childbirth, and early parenthood."
+      },
+      {
+        "course_code": "NURS 4100",
+        "course_name": "Mental Health Nursing",
+        "credits": 3,
+        "required": true,
+        "description": "Psychiatric and mental health nursing interventions."
+      },
+      {
+        "course_code": "NURS 4200",
+        "course_name": "Community Health Nursing",
+        "credits": 3,
+        "required": true,
+        "description": "Population health and community-based nursing practice."
+      },
+      {
+        "course_code": "NURS 4800",
+        "course_name": "Nursing Leadership and Management",
+        "credits": 3,
+        "required": true,
+        "description": "Leadership, management, and professional practice issues."
+      },
+      {
+        "course_code": "NURS 4900",
+        "course_name": "Capstone: Nursing Synthesis",
+        "credits": 3,
+        "required": true,
+        "description": "Integration of nursing knowledge and evidence-based practice."
+      }
+    ],
+    "electives": [
+      {
+        "course_code": "NURS 4010",
+        "course_name": "Critical Care Nursing",
+        "credits": 3,
+        "required": false,
+        "description": "Nursing care in intensive care units and critical situations."
+      },
+      {
+        "course_code": "NURS 4020",
+        "course_name": "Orthopedic Nursing",
+        "credits": 2,
+        "required": false,
+        "description": "Specialty nursing care for musculoskeletal conditions."
+      },
+      {
+        "course_code": "NURS 4030",
+        "course_name": "Oncology Nursing",
+        "credits": 2,
+        "required": false,
+        "description": "Nursing care for cancer patients and families."
+      }
+    ],
+    "science_requirements": [
+      {
+        "course_code": "BIOL 2411",
+        "course_name": "Human Anatomy",
+        "credits": 4,
+        "required": true,
+        "description": "Structure of the human body with lab component."
+      },
+      {
+        "course_code": "BIOL 2412",
+        "course_name": "Human Physiology",
+        "credits": 4,
+        "required": true,
+        "description": "Function of human body systems with lab component."
+      },
+      {
+        "course_code": "CHEM 1100",
+        "course_name": "General Chemistry I",
+        "credits": 4,
+        "required": true,
+        "description": "Fundamentals of chemistry with lab."
+      },
+      {
+        "course_code": "MICB 2500",
+        "course_name": "Microbiology for Health Sciences",
+        "credits": 4,
+        "required": true,
+        "description": "Microbiology principles relevant to nursing."
+      }
+    ]
+  },
+  "courses": {
+    "NURS 1200": {
+      "name": "Fundamentals of Nursing I",
+      "credits": 4,
+      "prerequisites": ["BIOL 2411", "BIOL 2412"],
+      "corequisites": [],
+      "description": "Introduction to nursing practice, basic patient care, and healthcare systems.",
+      "min_grade": "C"
+    },
+    "NURS 2200": {
+      "name": "Fundamentals of Nursing II",
+      "credits": 4,
+      "prerequisites": ["NURS 1200"],
+      "corequisites": [],
+      "description": "Advanced nursing skills and patient assessment techniques.",
+      "min_grade": "C"
+    },
+    "NURS 3300": {
+      "name": "Medical-Surgical Nursing I",
+      "credits": 4,
+      "prerequisites": ["NURS 2200"],
+      "corequisites": [],
+      "description": "Nursing care for adults with acute and chronic illnesses.",
+      "min_grade": "C"
+    },
+    "NURS 3310": {
+      "name": "Medical-Surgical Nursing II",
+      "credits": 4,
+      "prerequisites": ["NURS 3300"],
+      "corequisites": [],
+      "description": "Continuation of medical-surgical nursing with complex conditions.",
+      "min_grade": "C"
+    },
+    "NURS 3400": {
+      "name": "Pediatric Nursing",
+      "credits": 3,
+      "prerequisites": ["NURS 2200"],
+      "corequisites": [],
+      "description": "Nursing care for infants, children, and adolescents.",
+      "min_grade": "C"
+    },
+    "NURS 3500": {
+      "name": "Maternal-Child Health Nursing",
+      "credits": 4,
+      "prerequisites": ["NURS 2200"],
+      "corequisites": [],
+      "description": "Nursing care during pregnancy, childbirth, and early parenthood.",
+      "min_grade": "C"
+    },
+    "NURS 4100": {
+      "name": "Mental Health Nursing",
+      "credits": 3,
+      "prerequisites": ["NURS 2200"],
+      "corequisites": [],
+      "description": "Psychiatric and mental health nursing interventions.",
+      "min_grade": "C"
+    },
+    "NURS 4200": {
+      "name": "Community Health Nursing",
+      "credits": 3,
+      "prerequisites": ["NURS 2200"],
+      "corequisites": [],
+      "description": "Population health and community-based nursing practice.",
+      "min_grade": "C"
+    },
+    "NURS 4800": {
+      "name": "Nursing Leadership and Management",
+      "credits": 3,
+      "prerequisites": ["NURS 3310"],
+      "corequisites": [],
+      "description": "Leadership, management, and professional practice issues.",
+      "min_grade": "C"
+    },
+    "NURS 4900": {
+      "name": "Capstone: Nursing Synthesis",
+      "credits": 3,
+      "prerequisites": ["NURS 4200", "NURS 4100"],
+      "corequisites": [],
+      "description": "Integration of nursing knowledge and evidence-based practice.",
+      "min_grade": "C"
+    },
+    "NURS 4010": {
+      "name": "Critical Care Nursing",
+      "credits": 3,
+      "prerequisites": ["NURS 3310"],
+      "corequisites": [],
+      "description": "Nursing care in intensive care units and critical situations.",
+      "min_grade": "C"
+    },
+    "NURS 4020": {
+      "name": "Orthopedic Nursing",
+      "credits": 2,
+      "prerequisites": ["NURS 3310"],
+      "corequisites": [],
+      "description": "Specialty nursing care for musculoskeletal conditions.",
+      "min_grade": "C"
+    },
+    "NURS 4030": {
+      "name": "Oncology Nursing",
+      "credits": 2,
+      "prerequisites": ["NURS 3310"],
+      "corequisites": [],
+      "description": "Nursing care for cancer patients and families.",
+      "min_grade": "C"
+    },
+    "BIOL 2411": {
+      "name": "Human Anatomy",
+      "credits": 4,
+      "prerequisites": [],
+      "corequisites": [],
+      "description": "Structure of the human body with lab component.",
+      "min_grade": "C"
+    },
+    "BIOL 2412": {
+      "name": "Human Physiology",
+      "credits": 4,
+      "prerequisites": ["BIOL 2411"],
+      "corequisites": [],
+      "description": "Function of human body systems with lab component.",
+      "min_grade": "C"
+    },
+    "CHEM 1100": {
+      "name": "General Chemistry I",
+      "credits": 4,
+      "prerequisites": [],
+      "corequisites": [],
+      "description": "Fundamentals of chemistry with lab.",
+      "min_grade": "C"
+    },
+    "MICB 2500": {
+      "name": "Microbiology for Health Sciences",
+      "credits": 4,
+      "prerequisites": ["BIOL 2411", "CHEM 1100"],
+      "corequisites": [],
+      "description": "Microbiology principles relevant to nursing.",
+      "min_grade": "C"
+    }
+  }
+}

@@ -1,0 +1,230 @@
+{
+  "metadata": {
+    "major": "Business Administration",
+    "degree_type": "BS",
+    "university": "Georgia State University",
+    "catalog_year": "2025-2026",
+    "total_credits_required": 120,
+    "description": "Bachelor of Science in Business Administration"
+  },
+  "degree_requirements": {
+    "core_courses": [
+      {
+        "course_code": "ACCT 2101",
+        "course_name": "Principles of Accounting I",
+        "credits": 4,
+        "required": true,
+        "description": "Introduction to accounting concepts, principles, and the accounting cycle."
+      },
+      {
+        "course_code": "ACCT 2102",
+        "course_name": "Principles of Accounting II",
+        "credits": 4,
+        "required": true,
+        "description": "Continuation of accounting concepts with advanced topics in financial reporting."
+      },
+      {
+        "course_code": "BUS 2201",
+        "course_name": "Business Management",
+        "credits": 3,
+        "required": true,
+        "description": "Fundamentals of business management, organizational structures, and leadership."
+      },
+      {
+        "course_code": "BUS 2202",
+        "course_name": "Business Law",
+        "credits": 3,
+        "required": true,
+        "description": "Introduction to legal principles and business law applications."
+      },
+      {
+        "course_code": "ECON 2101",
+        "course_name": "Microeconomics",
+        "credits": 3,
+        "required": true,
+        "description": "Economic principles, supply and demand, and consumer behavior."
+      },
+      {
+        "course_code": "ECON 2102",
+        "course_name": "Macroeconomics",
+        "credits": 3,
+        "required": true,
+        "description": "National and international economic systems, fiscal policy, and monetary policy."
+      },
+      {
+        "course_code": "FINC 3101",
+        "course_name": "Corporate Finance",
+        "credits": 3,
+        "required": true,
+        "description": "Financial management, capital budgeting, and financial analysis."
+      },
+      {
+        "course_code": "MGMT 3301",
+        "course_name": "Organizational Behavior",
+        "credits": 3,
+        "required": true,
+        "description": "Human behavior in organizations, motivation, and team dynamics."
+      },
+      {
+        "course_code": "MKTG 3401",
+        "course_name": "Marketing Principles",
+        "credits": 3,
+        "required": true,
+        "description": "Marketing strategy, consumer analysis, and promotional tactics."
+      }
+    ],
+    "electives": [
+      {
+        "course_code": "FINC 3102",
+        "course_name": "Investments",
+        "credits": 3,
+        "required": false,
+        "description": "Investment analysis, portfolio management, and securities."
+      },
+      {
+        "course_code": "MGMT 4401",
+        "course_name": "Strategic Management",
+        "credits": 3,
+        "required": false,
+        "description": "Strategic planning, competitive advantage, and business strategy."
+      },
+      {
+        "course_code": "MKTG 4402",
+        "course_name": "Digital Marketing",
+        "credits": 3,
+        "required": false,
+        "description": "Social media marketing, digital advertising, and e-commerce."
+      }
+    ],
+    "math_requirements": [
+      {
+        "course_code": "MATH 1111",
+        "course_name": "College Algebra",
+        "credits": 3,
+        "required": true,
+        "description": "Functions, equations, inequalities, and polynomial operations."
+      },
+      {
+        "course_code": "MATH 3020",
+        "course_name": "Applied Probability and Statistics",
+        "credits": 3,
+        "required": true,
+        "description": "Probability theory, random variables, distributions, and statistical inference."
+      }
+    ]
+  },
+  "courses": {
+    "ACCT 2101": {
+      "name": "Principles of Accounting I",
+      "credits": 4,
+      "prerequisites": ["MATH 1111"],
+      "corequisites": [],
+      "description": "Introduction to accounting concepts, principles, and the accounting cycle.",
+      "min_grade": "C"
+    },
+    "ACCT 2102": {
+      "name": "Principles of Accounting II",
+      "credits": 4,
+      "prerequisites": ["ACCT 2101"],
+      "corequisites": [],
+      "description": "Continuation of accounting concepts with advanced topics in financial reporting.",
+      "min_grade": "C"
+    },
+    "BUS 2201": {
+      "name": "Business Management",
+      "credits": 3,
+      "prerequisites": [],
+      "corequisites": [],
+      "description": "Fundamentals of business management, organizational structures, and leadership.",
+      "min_grade": "C"
+    },
+    "BUS 2202": {
+      "name": "Business Law",
+      "credits": 3,
+      "prerequisites": [],
+      "corequisites": [],
+      "description": "Introduction to legal principles and business law applications.",
+      "min_grade": "C"
+    },
+    "ECON 2101": {
+      "name": "Microeconomics",
+      "credits": 3,
+      "prerequisites": [],
+      "corequisites": [],
+      "description": "Economic principles, supply and demand, and consumer behavior.",
+      "min_grade": "C"
+    },
+    "ECON 2102": {
+      "name": "Macroeconomics",
+      "credits": 3,
+      "prerequisites": [],
+      "corequisites": [],
+      "description": "National and international economic systems, fiscal policy, and monetary policy.",
+      "min_grade": "C"
+    },
+    "FINC 3101": {
+      "name": "Corporate Finance",
+      "credits": 3,
+      "prerequisites": ["ACCT 2102", "ECON 2102"],
+      "corequisites": [],
+      "description": "Financial management, capital budgeting, and financial analysis.",
+      "min_grade": "C"
+    },
+    "MGMT 3301": {
+      "name": "Organizational Behavior",
+      "credits": 3,
+      "prerequisites": ["BUS 2201"],
+      "corequisites": [],
+      "description": "Human behavior in organizations, motivation, and team dynamics.",
+      "min_grade": "C"
+    },
+    "MKTG 3401": {
+      "name": "Marketing Principles",
+      "credits": 3,
+      "prerequisites": ["ECON 2101"],
+      "corequisites": [],
+      "description": "Marketing strategy, consumer analysis, and promotional tactics.",
+      "min_grade": "C"
+    },
+    "FINC 3102": {
+      "name": "Investments",
+      "credits": 3,
+      "prerequisites": ["FINC 3101"],
+      "corequisites": [],
+      "description": "Investment analysis, portfolio management, and securities.",
+      "min_grade": "C"
+    },
+    "MGMT 4401": {
+      "name": "Strategic Management",
+      "credits": 3,
+      "prerequisites": ["BUS 2201", "MGMT 3301"],
+      "corequisites": [],
+      "description": "Strategic planning, competitive advantage, and business strategy.",
+      "min_grade": "C"
+    },
+    "MKTG 4402": {
+      "name": "Digital Marketing",
+      "credits": 3,
+      "prerequisites": ["MKTG 3401"],
+      "corequisites": [],
+      "description": "Social media marketing, digital advertising, and e-commerce.",
+      "min_grade": "C"
+    },
+    "MATH 1111": {
+      "name": "College Algebra",
+      "credits": 3,
+      "prerequisites": [],
+      "corequisites": [],
+      "description": "Functions, equations, inequalities, and polynomial operations.",
+      "min_grade": "C"
+    },
+    "MATH 3020": {
+      "name": "Applied Probability and Statistics",
+      "credits": 3,
+      "prerequisites": ["MATH 1111"],
+      "corequisites": [],
+      "description": "Probability theory, random variables, distributions, and statistical inference.",
+      "min_grade": "C"
+    }
+  }
+}

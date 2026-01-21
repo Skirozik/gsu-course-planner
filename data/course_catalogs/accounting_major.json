@@ -1,0 +1,283 @@
+{
+  "metadata": {
+    "major": "Accounting",
+    "degree_type": "BBA",
+    "university": "Georgia State University",
+    "catalog_year": "2025-2026",
+    "total_credits_required": 120,
+    "description": "Bachelor of Business Administration in Accounting"
+  },
+  "degree_requirements": {
+    "core_courses": [
+      {
+        "course_code": "ACCT 2101",
+        "course_name": "Principles of Accounting I",
+        "credits": 3,
+        "required": true,
+        "description": "Introduction to accounting principles and the accounting cycle."
+      },
+      {
+        "course_code": "ACCT 2102",
+        "course_name": "Principles of Accounting II",
+        "credits": 3,
+        "required": true,
+        "description": "Advanced accounting topics and financial reporting."
+      },
+      {
+        "course_code": "ACCT 3101",
+        "course_name": "Intermediate Accounting I",
+        "credits": 3,
+        "required": true,
+        "description": "In-depth coverage of financial statement preparation."
+      },
+      {
+        "course_code": "ACCT 3102",
+        "course_name": "Intermediate Accounting II",
+        "credits": 3,
+        "required": true,
+        "description": "Continuation of intermediate accounting topics."
+      },
+      {
+        "course_code": "ACCT 3201",
+        "course_name": "Cost Accounting",
+        "credits": 3,
+        "required": true,
+        "description": "Cost systems and managerial accounting techniques."
+      },
+      {
+        "course_code": "ACCT 3301",
+        "course_name": "Tax Accounting I",
+        "credits": 3,
+        "required": true,
+        "description": "Federal income tax principles for individuals."
+      },
+      {
+        "course_code": "ACCT 3302",
+        "course_name": "Tax Accounting II",
+        "credits": 3,
+        "required": true,
+        "description": "Tax principles for businesses and entities."
+      },
+      {
+        "course_code": "ACCT 4101",
+        "course_name": "Auditing",
+        "credits": 3,
+        "required": true,
+        "description": "Audit procedures, standards, and professional responsibility."
+      },
+      {
+        "course_code": "ACCT 4201",
+        "course_name": "Advanced Accounting",
+        "credits": 3,
+        "required": true,
+        "description": "Consolidated statements and advanced topics."
+      },
+      {
+        "course_code": "ACCT 4301",
+        "course_name": "Accounting Capstone",
+        "credits": 3,
+        "required": true,
+        "description": "Integration of accounting knowledge and professional practice."
+      }
+    ],
+    "business_core": [
+      {
+        "course_code": "BUS 2201",
+        "course_name": "Business Management",
+        "credits": 3,
+        "required": true,
+        "description": "Organizational management and business fundamentals."
+      },
+      {
+        "course_code": "BUS 2202",
+        "course_name": "Business Law",
+        "credits": 3,
+        "required": true,
+        "description": "Legal principles applicable to business."
+      },
+      {
+        "course_code": "ECON 2101",
+        "course_name": "Microeconomics",
+        "credits": 3,
+        "required": true,
+        "description": "Economic principles and consumer behavior."
+      },
+      {
+        "course_code": "ECON 2102",
+        "course_name": "Macroeconomics",
+        "credits": 3,
+        "required": true,
+        "description": "National and international economic systems."
+      },
+      {
+        "course_code": "FINC 3101",
+        "course_name": "Corporate Finance",
+        "credits": 3,
+        "required": true,
+        "description": "Financial management and capital budgeting."
+      }
+    ],
+    "electives": [
+      {
+        "course_code": "ACCT 4401",
+        "course_name": "Forensic Accounting",
+        "credits": 3,
+        "required": false,
+        "description": "Detection and investigation of financial fraud."
+      },
+      {
+        "course_code": "ACCT 4501",
+        "course_name": "Not-for-Profit Accounting",
+        "credits": 3,
+        "required": false,
+        "description": "Accounting for nonprofits and governmental entities."
+      }
+    ]
+  },
+  "courses": {
+    "ACCT 2101": {
+      "name": "Principles of Accounting I",
+      "credits": 3,
+      "prerequisites": ["MATH 1111"],
+      "corequisites": [],
+      "description": "Introduction to accounting principles and the accounting cycle.",
+      "min_grade": "C"
+    },
+    "ACCT 2102": {
+      "name": "Principles of Accounting II",
+      "credits": 3,
+      "prerequisites": ["ACCT 2101"],
+      "corequisites": [],
+      "description": "Advanced accounting topics and financial reporting.",
+      "min_grade": "C"
+    },
+    "ACCT 3101": {
+      "name": "Intermediate Accounting I",
+      "credits": 3,
+      "prerequisites": ["ACCT 2102"],
+      "corequisites": [],
+      "description": "In-depth coverage of financial statement preparation.",
+      "min_grade": "C"
+    },
+    "ACCT 3102": {
+      "name": "Intermediate Accounting II",
+      "credits": 3,
+      "prerequisites": ["ACCT 3101"],
+      "corequisites": [],
+      "description": "Continuation of intermediate accounting topics.",
+      "min_grade": "C"
+    },
+    "ACCT 3201": {
+      "name": "Cost Accounting",
+      "credits": 3,
+      "prerequisites": ["ACCT 2102"],
+      "corequisites": [],
+      "description": "Cost systems and managerial accounting techniques.",
+      "min_grade": "C"
+    },
+    "ACCT 3301": {
+      "name": "Tax Accounting I",
+      "credits": 3,
+      "prerequisites": ["ACCT 2102"],
+      "corequisites": [],
+      "description": "Federal income tax principles for individuals.",
+      "min_grade": "C"
+    },
+    "ACCT 3302": {
+      "name": "Tax Accounting II",
+      "credits": 3,
+      "prerequisites": ["ACCT 3301"],
+      "corequisites": [],
+      "description": "Tax principles for businesses and entities.",
+      "min_grade": "C"
+    },
+    "ACCT 4101": {
+      "name": "Auditing",
+      "credits": 3,
+      "prerequisites": ["ACCT 3102"],
+      "corequisites": [],
+      "description": "Audit procedures, standards, and professional responsibility.",
+      "min_grade": "C"
+    },
+    "ACCT 4201": {
+      "name": "Advanced Accounting",
+      "credits": 3,
+      "prerequisites": ["ACCT 3102"],
+      "corequisites": [],
+      "description": "Consolidated statements and advanced topics.",
+      "min_grade": "C"
+    },
+    "ACCT 4301": {
+      "name": "Accounting Capstone",
+      "credits": 3,
+      "prerequisites": ["ACCT 4101", "ACCT 4201"],
+      "corequisites": [],
+      "description": "Integration of accounting knowledge and professional practice.",
+      "min_grade": "C"
+    },
+    "ACCT 4401": {
+      "name": "Forensic Accounting",
+      "credits": 3,
+      "prerequisites": ["ACCT 3102"],
+      "corequisites": [],
+      "description": "Detection and investigation of financial fraud.",
+      "min_grade": "C"
+    },
+    "ACCT 4501": {
+      "name": "Not-for-Profit Accounting",
+      "credits": 3,
+      "prerequisites": ["ACCT 3102"],
+      "corequisites": [],
+      "description": "Accounting for nonprofits and governmental entities.",
+      "min_grade": "C"
+    },
+    "BUS 2201": {
+      "name": "Business Management",
+      "credits": 3,
+      "prerequisites": [],
+      "corequisites": [],
+      "description": "Organizational management and business fundamentals.",
+      "min_grade": "C"
+    },
+    "BUS 2202": {
+      "name": "Business Law",
+      "credits": 3,
+      "prerequisites": [],
+      "corequisites": [],
+      "description": "Legal principles applicable to business.",
+      "min_grade": "C"
+    },
+    "ECON 2101": {
+      "name": "Microeconomics",
+      "credits": 3,
+      "prerequisites": [],
+      "corequisites": [],
+      "description": "Economic principles and consumer behavior.",
+      "min_grade": "C"
+    },
+    "ECON 2102": {
+      "name": "Macroeconomics",
+      "credits": 3,
+      "prerequisites": [],
+      "corequisites": [],
+      "description": "National and international economic systems.",
+      "min_grade": "C"
+    },
+    "FINC 3101": {
+      "name": "Corporate Finance",
+      "credits": 3,
+      "prerequisites": ["ACCT 2102", "ECON 2102"],
+      "corequisites": [],
+      "description": "Financial management and capital budgeting.",
+      "min_grade": "C"
+    },
+    "MATH 1111": {
+      "name": "College Algebra",
+      "credits": 3,
+      "prerequisites": [],
+      "corequisites": [],
+      "description": "Functions, equations, and polynomial operations.",
+      "min_grade": "C"
+    }
+  }
+}

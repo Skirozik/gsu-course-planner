@@ -1,0 +1,440 @@
+{
+  "metadata": {
+    "major": "Computer Science",
+    "degree_type": "BS",
+    "university": "Georgia State University",
+    "catalog_year": "2025-2026",
+    "total_credits_required": 120,
+    "description": "Bachelor of Science in Computer Science"
+  },
+  "degree_requirements": {
+    "core_courses": [
+      {
+        "course_code": "CSC 1301",
+        "course_name": "Principles of Computer Science I",
+        "credits": 4,
+        "required": true,
+        "description": "Introduction to programming using Python. Covers variables, control structures, functions, and basic data structures."
+      },
+      {
+        "course_code": "CSC 1302",
+        "course_name": "Principles of Computer Science II",
+        "credits": 4,
+        "required": true,
+        "description": "Object-oriented programming in Java. Covers classes, inheritance, polymorphism, and basic algorithms."
+      },
+      {
+        "course_code": "CSC 2720",
+        "course_name": "Data Structures",
+        "credits": 3,
+        "required": true,
+        "description": "Fundamental data structures including arrays, linked lists, stacks, queues, trees, and graphs. Algorithm analysis."
+      },
+      {
+        "course_code": "CSC 3210",
+        "course_name": "Computer Organization and Programming",
+        "credits": 4,
+        "required": true,
+        "description": "Computer architecture, assembly language programming, memory organization, and I/O systems."
+      },
+      {
+        "course_code": "CSC 3320",
+        "course_name": "System Level Programming",
+        "credits": 3,
+        "required": true,
+        "description": "C programming, Unix/Linux systems, process management, memory management, and system calls."
+      },
+      {
+        "course_code": "CSC 3350",
+        "course_name": "Software Development (CTW)",
+        "credits": 4,
+        "required": true,
+        "description": "Software engineering principles, agile development, version control, testing, and team projects."
+      },
+      {
+        "course_code": "CSC 4320",
+        "course_name": "Operating Systems",
+        "credits": 4,
+        "required": true,
+        "description": "Process scheduling, memory management, file systems, concurrency, and distributed systems."
+      },
+      {
+        "course_code": "CSC 4330",
+        "course_name": "Programming Language Concepts",
+        "credits": 4,
+        "required": true,
+        "description": "Syntax, semantics, type systems, functional programming, and language implementation."
+      },
+      {
+        "course_code": "CSC 4520",
+        "course_name": "Design and Analysis of Algorithms",
+        "credits": 4,
+        "required": true,
+        "description": "Algorithm design techniques, complexity analysis, NP-completeness, and advanced data structures."
+      },
+      {
+        "course_code": "CSC 4351",
+        "course_name": "Capstone Senior Design I",
+        "credits": 2,
+        "required": true,
+        "description": "First semester of senior capstone project. Project planning, requirements, and initial design."
+      },
+      {
+        "course_code": "CSC 4352",
+        "course_name": "Capstone Senior Design II",
+        "credits": 2,
+        "required": true,
+        "description": "Second semester of senior capstone. Implementation, testing, and final presentation."
+      }
+    ],
+    "electives": [
+      {
+        "course_code": "CSC 4210",
+        "course_name": "Computer Networks",
+        "credits": 4,
+        "required": false,
+        "description": "Network protocols, TCP/IP, routing, network security, and distributed applications."
+      },
+      {
+        "course_code": "CSC 4350",
+        "course_name": "Software Engineering",
+        "credits": 4,
+        "required": false,
+        "description": "Advanced software engineering topics, design patterns, and software architecture."
+      },
+      {
+        "course_code": "CSC 4360",
+        "course_name": "Mobile Application Development",
+        "credits": 4,
+        "required": false,
+        "description": "Development of mobile applications for iOS and Android platforms."
+      },
+      {
+        "course_code": "CSC 4370",
+        "course_name": "Web Development",
+        "credits": 4,
+        "required": false,
+        "description": "Full-stack web development including HTML, CSS, JavaScript, and backend frameworks."
+      },
+      {
+        "course_code": "CSC 4510",
+        "course_name": "Automata",
+        "credits": 4,
+        "required": false,
+        "description": "Finite automata, regular expressions, context-free grammars, and Turing machines."
+      },
+      {
+        "course_code": "CSC 4610",
+        "course_name": "Artificial Intelligence",
+        "credits": 4,
+        "required": false,
+        "description": "Search algorithms, knowledge representation, machine learning fundamentals, and AI applications."
+      },
+      {
+        "course_code": "CSC 4620",
+        "course_name": "Machine Learning",
+        "credits": 4,
+        "required": false,
+        "description": "Supervised and unsupervised learning, neural networks, and practical ML applications."
+      },
+      {
+        "course_code": "CSC 4710",
+        "course_name": "Database Systems",
+        "credits": 4,
+        "required": false,
+        "description": "Relational databases, SQL, database design, normalization, and transaction processing."
+      },
+      {
+        "course_code": "CSC 4740",
+        "course_name": "Data Mining",
+        "credits": 4,
+        "required": false,
+        "description": "Data preprocessing, classification, clustering, association rules, and big data analytics."
+      },
+      {
+        "course_code": "CSC 4850",
+        "course_name": "Cybersecurity",
+        "credits": 4,
+        "required": false,
+        "description": "Network security, cryptography, secure coding, and security protocols."
+      }
+    ],
+    "math_requirements": [
+      {
+        "course_code": "MATH 1111",
+        "course_name": "College Algebra",
+        "credits": 3,
+        "required": true,
+        "description": "Functions, equations, inequalities, and polynomial operations."
+      },
+      {
+        "course_code": "MATH 1113",
+        "course_name": "Precalculus",
+        "credits": 3,
+        "required": true,
+        "description": "Trigonometry, exponential and logarithmic functions, preparation for calculus."
+      },
+      {
+        "course_code": "MATH 2211",
+        "course_name": "Calculus of One Variable I",
+        "credits": 4,
+        "required": true,
+        "description": "Limits, derivatives, integrals, and applications of calculus."
+      },
+      {
+        "course_code": "MATH 2212",
+        "course_name": "Calculus of One Variable II",
+        "credits": 4,
+        "required": true,
+        "description": "Integration techniques, sequences, series, and parametric equations."
+      },
+      {
+        "course_code": "MATH 2420",
+        "course_name": "Discrete Mathematics",
+        "credits": 3,
+        "required": true,
+        "description": "Logic, sets, relations, functions, combinatorics, and graph theory."
+      },
+      {
+        "course_code": "MATH 2641",
+        "course_name": "Linear Algebra",
+        "credits": 3,
+        "required": true,
+        "description": "Vectors, matrices, linear transformations, eigenvalues, and applications."
+      },
+      {
+        "course_code": "MATH 3020",
+        "course_name": "Applied Probability and Statistics",
+        "credits": 3,
+        "required": false,
+        "description": "Probability theory, random variables, distributions, and statistical inference."
+      }
+    ]
+  },
+  "courses": {
+    "CSC 1301": {
+      "name": "Principles of Computer Science I",
+      "credits": 4,
+      "prerequisites": [],
+      "corequisites": ["MATH 1111"],
+      "description": "Introduction to programming using Python. Covers variables, control structures, functions, and basic data structures.",
+      "min_grade": "C"
+    },
+    "CSC 1302": {
+      "name": "Principles of Computer Science II",
+      "credits": 4,
+      "prerequisites": ["CSC 1301"],
+      "corequisites": [],
+      "description": "Object-oriented programming in Java. Covers classes, inheritance, polymorphism, and basic algorithms.",
+      "min_grade": "C"
+    },
+    "CSC 2720": {
+      "name": "Data Structures",
+      "credits": 3,
+      "prerequisites": ["CSC 1302"],
+      "corequisites": [],
+      "description": "Fundamental data structures including arrays, linked lists, stacks, queues, trees, and graphs. Algorithm analysis.",
+      "min_grade": "C"
+    },
+    "CSC 3210": {
+      "name": "Computer Organization and Programming",
+      "credits": 4,
+      "prerequisites": ["CSC 2720"],
+      "corequisites": [],
+      "description": "Computer architecture, assembly language programming, memory organization, and I/O systems.",
+      "min_grade": "C"
+    },
+    "CSC 3320": {
+      "name": "System Level Programming",
+      "credits": 3,
+      "prerequisites": ["CSC 2720"],
+      "corequisites": [],
+      "description": "C programming, Unix/Linux systems, process management, memory management, and system calls.",
+      "min_grade": "C"
+    },
+    "CSC 3350": {
+      "name": "Software Development (CTW)",
+      "credits": 4,
+      "prerequisites": ["CSC 2720"],
+      "corequisites": [],
+      "description": "Software engineering principles, agile development, version control, testing, and team projects.",
+      "min_grade": "C"
+    },
+    "CSC 4320": {
+      "name": "Operating Systems",
+      "credits": 4,
+      "prerequisites": ["CSC 3320"],
+      "corequisites": [],
+      "description": "Process scheduling, memory management, file systems, concurrency, and distributed systems.",
+      "min_grade": "C"
+    },
+    "CSC 4330": {
+      "name": "Programming Language Concepts",
+      "credits": 4,
+      "prerequisites": ["CSC 3320"],
+      "corequisites": [],
+      "description": "Syntax, semantics, type systems, functional programming, and language implementation.",
+      "min_grade": "C"
+    },
+    "CSC 4351": {
+      "name": "Capstone Senior Design I",
+      "credits": 2,
+      "prerequisites": ["CSC 3350"],
+      "corequisites": [],
+      "description": "First semester of senior capstone project. Project planning, requirements, and initial design.",
+      "min_grade": "C"
+    },
+    "CSC 4352": {
+      "name": "Capstone Senior Design II",
+      "credits": 2,
+      "prerequisites": ["CSC 4351"],
+      "corequisites": [],
+      "description": "Second semester of senior capstone. Implementation, testing, and final presentation.",
+      "min_grade": "C"
+    },
+    "CSC 4520": {
+      "name": "Design and Analysis of Algorithms",
+      "credits": 4,
+      "prerequisites": ["CSC 2720", "MATH 2420"],
+      "corequisites": [],
+      "description": "Algorithm design techniques, complexity analysis, NP-completeness, and advanced data structures.",
+      "min_grade": "C"
+    },
+    "CSC 4210": {
+      "name": "Computer Networks",
+      "credits": 4,
+      "prerequisites": ["CSC 3320"],
+      "corequisites": [],
+      "description": "Network protocols, TCP/IP, routing, network security, and distributed applications.",
+      "min_grade": "C"
+    },
+    "CSC 4350": {
+      "name": "Software Engineering",
+      "credits": 4,
+      "prerequisites": ["CSC 3350"],
+      "corequisites": [],
+      "description": "Advanced software engineering topics, design patterns, and software architecture.",
+      "min_grade": "C"
+    },
+    "CSC 4360": {
+      "name": "Mobile Application Development",
+      "credits": 4,
+      "prerequisites": ["CSC 3350"],
+      "corequisites": [],
+      "description": "Development of mobile applications for iOS and Android platforms.",
+      "min_grade": "C"
+    },
+    "CSC 4370": {
+      "name": "Web Development",
+      "credits": 4,
+      "prerequisites": ["CSC 2720"],
+      "corequisites": [],
+      "description": "Full-stack web development including HTML, CSS, JavaScript, and backend frameworks.",
+      "min_grade": "C"
+    },
+    "CSC 4510": {
+      "name": "Automata",
+      "credits": 4,
+      "prerequisites": ["CSC 2720", "MATH 2420"],
+      "corequisites": [],
+      "description": "Finite automata, regular expressions, context-free grammars, and Turing machines.",
+      "min_grade": "C"
+    },
+    "CSC 4610": {
+      "name": "Artificial Intelligence",
+      "credits": 4,
+      "prerequisites": ["CSC 2720"],
+      "corequisites": [],
+      "description": "Search algorithms, knowledge representation, machine learning fundamentals, and AI applications.",
+      "min_grade": "C"
+    },
+    "CSC 4620": {
+      "name": "Machine Learning",
+      "credits": 4,
+      "prerequisites": ["CSC 2720", "MATH 3020"],
+      "corequisites": [],
+      "description": "Supervised and unsupervised learning, neural networks, and practical ML applications.",
+      "min_grade": "C"
+    },
+    "CSC 4710": {
+      "name": "Database Systems",
+      "credits": 4,
+      "prerequisites": ["CSC 2720"],
+      "corequisites": [],
+      "description": "Relational databases, SQL, database design, normalization, and transaction processing.",
+      "min_grade": "C"
+    },
+    "CSC 4740": {
+      "name": "Data Mining",
+      "credits": 4,
+      "prerequisites": ["CSC 2720"],
+      "corequisites": [],
+      "description": "Data preprocessing, classification, clustering, association rules, and big data analytics.",
+      "min_grade": "C"
+    },
+    "CSC 4850": {
+      "name": "Cybersecurity",
+      "credits": 4,
+      "prerequisites": ["CSC 3320"],
+      "corequisites": [],
+      "description": "Network security, cryptography, secure coding, and security protocols.",
+      "min_grade": "C"
+    },
+    "MATH 1111": {
+      "name": "College Algebra",
+      "credits": 3,
+      "prerequisites": [],
+      "corequisites": [],
+      "description": "Functions, equations, inequalities, and polynomial operations.",
+      "min_grade": "C"
+    },
+    "MATH 1113": {
+      "name": "Precalculus",
+      "credits": 3,
+      "prerequisites": ["MATH 1111"],
+      "corequisites": [],
+      "description": "Trigonometry, exponential and logarithmic functions, preparation for calculus.",
+      "min_grade": "C"
+    },
+    "MATH 2211": {
+      "name": "Calculus of One Variable I",
+      "credits": 4,
+      "prerequisites": ["MATH 1113"],
+      "corequisites": [],
+      "description": "Limits, derivatives, integrals, and applications of calculus.",
+      "min_grade": "C"
+    },
+    "MATH 2212": {
+      "name": "Calculus of One Variable II",
+      "credits": 4,
+      "prerequisites": ["MATH 2211"],
+      "corequisites": [],
+      "description": "Integration techniques, sequences, series, and parametric equations.",
+      "min_grade": "C"
+    },
+    "MATH 2420": {
+      "name": "Discrete Mathematics",
+      "credits": 3,
+      "prerequisites": ["MATH 1113"],
+      "corequisites": [],
+      "description": "Logic, sets, relations, functions, combinatorics, and graph theory.",
+      "min_grade": "C"
+    },
+    "MATH 2641": {
+      "name": "Linear Algebra",
+      "credits": 3,
+      "prerequisites": ["MATH 2211"],
+      "corequisites": [],
+      "description": "Vectors, matrices, linear transformations, eigenvalues, and applications.",
+      "min_grade": "C"
+    },
+    "MATH 3020": {
+      "name": "Applied Probability and Statistics",
+      "credits": 3,
+      "prerequisites": ["MATH 2211"],
+      "corequisites": [],
+      "description": "Probability theory, random variables, distributions, and statistical inference.",
+      "min_grade": "C"
+    }
+  }
+}
