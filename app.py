@@ -376,6 +376,7 @@ with tab1:
 
         eval_data = st.session_state.eval_data
         major = st.session_state.selected_major
+        school = st.session_state.selected_school
 
         # Get completed courses
         completed_courses = [c['course_code'] for c in eval_data['completed_courses']]
@@ -384,7 +385,7 @@ with tab1:
         col_prog1, col_prog2, col_prog3 = st.columns(3)
 
         with col_prog1:
-            progress_info = catalog_loader.get_degree_progress(major, completed_courses)
+            progress_info = catalog_loader.get_degree_progress(school, major, completed_courses)
             st.metric("Core Courses", progress_info['core_progress'])
 
         with col_prog2:
@@ -396,7 +397,7 @@ with tab1:
         # Show next available courses based on catalog
         st.markdown("#### 🟢 Courses You Can Take Now")
 
-        next_courses = catalog_loader.get_recommended_next_courses(major, completed_courses, limit=8)
+        next_courses = catalog_loader.get_recommended_next_courses(school, major, completed_courses, limit=8)
 
         if next_courses:
             cols = st.columns(2)
@@ -417,7 +418,7 @@ with tab1:
         req_tab1, req_tab2, req_tab3 = st.tabs(["Core Courses", "Electives", "Math"])
 
         with req_tab1:
-            core_courses = catalog_loader.get_core_courses(major)
+            core_courses = catalog_loader.get_core_courses(school, major)
             completed_core = [c for c in core_courses if c['course_code'] in completed_courses]
             pending_core = [c for c in core_courses if c['course_code'] not in completed_courses]
 
@@ -440,12 +441,12 @@ with tab1:
                     st.success("✅ All core courses completed!")
 
         with req_tab2:
-            electives = catalog_loader.get_elective_courses(major)
+            electives = catalog_loader.get_elective_courses(school, major)
             if electives:
                 st.markdown("Choose electives based on your interests:")
                 for elective in electives:
                     can_take = catalog_loader.check_prerequisites_met(
-                        major, elective['course_code'], completed_courses
+                        school, major, elective['course_code'], completed_courses
                     )['can_take']
                     status = "✅ Available" if can_take else "🔒 Prerequisites needed"
                     st.markdown(f"- **{elective['course_code']}**: {elective['course_name']} - {status}")
@@ -453,7 +454,7 @@ with tab1:
                 st.info("No electives defined for this major.")
 
         with req_tab3:
-            math_reqs = catalog_loader.get_math_requirements(major)
+            math_reqs = catalog_loader.get_math_requirements(school, major)
             if math_reqs:
                 completed_math = [m for m in math_reqs if m['course_code'] in completed_courses]
                 pending_math = [m for m in math_reqs if m['course_code'] not in completed_courses]
@@ -478,19 +479,33 @@ with tab1:
 
 with tab3:
     st.markdown("### 📚 Catalog Explorer")
-    st.markdown("Browse and explore courses for each major program at GSU.")
+    st.markdown("Browse and explore courses for each major program.")
 
-    # Major selector
-    explorer_major = st.selectbox(
-        "Select a Major to Explore",
-        options=catalog_loader.get_available_majors(),
-        key="catalog_explorer_major"
-    )
+    # School and Major selectors
+    col_sch, col_maj = st.columns(2)
+    
+    with col_sch:
+        explorer_school = st.selectbox(
+            "Select a School",
+            options=catalog_loader.get_available_schools(),
+            key="catalog_explorer_school"
+        )
+    
+    with col_maj:
+        if explorer_school:
+            majors_for_school = catalog_loader.get_majors_for_school(explorer_school)
+            explorer_major = st.selectbox(
+                "Select a Major to Explore",
+                options=majors_for_school,
+                key="catalog_explorer_major"
+            )
+        else:
+            explorer_major = None
 
-    if explorer_major:
+    if explorer_major and explorer_school:
         # Get catalog info
-        catalog = catalog_loader.get_catalog(explorer_major)
-        metadata = catalog.get("metadata", {})
+        catalog = catalog_loader.get_catalog(explorer_school, explorer_major)
+        metadata = catalog.get("metadata", {}) if catalog else {}
 
         # Header
         st.markdown(f"## {metadata.get('major', explorer_major)}")
@@ -503,35 +518,35 @@ with tab3:
         cat_tab1, cat_tab2, cat_tab3 = st.tabs(["Core Courses", "Electives", "All Courses"])
 
         with cat_tab1:
-            core_courses = catalog_loader.get_core_courses(explorer_major)
+            core_courses = catalog_loader.get_core_courses(explorer_school, explorer_major)
             st.markdown(f"### Required Core Courses ({len(core_courses)} courses)")
 
             for course in core_courses:
                 with st.expander(f"**{course['course_code']}**: {course['course_name']} ({course['credits']} credits)"):
                     st.markdown(course['description'])
 
-                    prereqs = catalog_loader.get_prerequisites(explorer_major, course['course_code'])
+                    prereqs = catalog_loader.get_prerequisites(explorer_school, explorer_major, course['course_code'])
                     if prereqs:
                         st.markdown(f"**Prerequisites:** {', '.join(prereqs)}")
                     else:
                         st.markdown("**Prerequisites:** None")
 
         with cat_tab2:
-            electives = catalog_loader.get_elective_courses(explorer_major)
+            electives = catalog_loader.get_elective_courses(explorer_school, explorer_major)
             st.markdown(f"### Elective Courses ({len(electives)} courses)")
 
             for course in electives:
                 with st.expander(f"**{course['course_code']}**: {course['course_name']} ({course['credits']} credits)"):
                     st.markdown(course['description'])
 
-                    prereqs = catalog_loader.get_prerequisites(explorer_major, course['course_code'])
+                    prereqs = catalog_loader.get_prerequisites(explorer_school, explorer_major, course['course_code'])
                     if prereqs:
                         st.markdown(f"**Prerequisites:** {', '.join(prereqs)}")
                     else:
                         st.markdown("**Prerequisites:** None")
 
         with cat_tab3:
-            all_courses = catalog_loader.get_all_courses_for_major(explorer_major)
+            all_courses = catalog_loader.get_all_courses_for_major(explorer_school, explorer_major)
             st.markdown(f"### All Courses in {explorer_major} ({len(all_courses)} courses)")
 
             # Search within catalog
