@@ -1,0 +1,230 @@
+{
+  "metadata": {
+    "major": "Information Technology",
+    "degree_type": "BS",
+    "university": "Georgia State University",
+    "catalog_year": "2025-2026",
+    "total_credits_required": 120,
+    "description": "Bachelor of Science in Information Technology"
+  },
+  "degree_requirements": {
+    "core_courses": [
+      {
+        "course_code": "ITEC 1010",
+        "course_name": "Introduction to IT",
+        "credits": 3,
+        "required": true,
+        "description": "Overview of IT career paths and foundational concepts."
+      },
+      {
+        "course_code": "ITEC 2100",
+        "course_name": "Database Design and SQL",
+        "credits": 3,
+        "required": true,
+        "description": "Relational databases and structured query language."
+      },
+      {
+        "course_code": "ITEC 2200",
+        "course_name": "Network Fundamentals",
+        "credits": 3,
+        "required": true,
+        "description": "Computer networking concepts and protocols."
+      },
+      {
+        "course_code": "ITEC 3100",
+        "course_name": "Systems Administration",
+        "credits": 3,
+        "required": true,
+        "description": "Server and system management practices."
+      },
+      {
+        "course_code": "ITEC 3200",
+        "course_name": "Network Security",
+        "credits": 3,
+        "required": true,
+        "description": "Security principles and threat prevention."
+      },
+      {
+        "course_code": "ITEC 3300",
+        "course_name": "Web Development Basics",
+        "credits": 3,
+        "required": true,
+        "description": "HTML, CSS, and basic web development."
+      },
+      {
+        "course_code": "ITEC 4100",
+        "course_name": "Cloud Computing",
+        "credits": 3,
+        "required": true,
+        "description": "Cloud services, deployment models, and management."
+      },
+      {
+        "course_code": "ITEC 4200",
+        "course_name": "IT Project Management",
+        "credits": 3,
+        "required": true,
+        "description": "Project planning, execution, and monitoring."
+      },
+      {
+        "course_code": "ITEC 4900",
+        "course_name": "Capstone Project",
+        "credits": 3,
+        "required": true,
+        "description": "Comprehensive IT project demonstration."
+      }
+    ],
+    "electives": [
+      {
+        "course_code": "ITEC 3400",
+        "course_name": "Cybersecurity Essentials",
+        "credits": 3,
+        "required": false,
+        "description": "Applied cybersecurity practices and tools."
+      },
+      {
+        "course_code": "ITEC 3500",
+        "course_name": "Mobile Application Development",
+        "credits": 3,
+        "required": false,
+        "description": "Development for mobile platforms."
+      },
+      {
+        "course_code": "ITEC 4050",
+        "course_name": "IT Governance and Compliance",
+        "credits": 3,
+        "required": false,
+        "description": "Risk management and regulatory compliance."
+      }
+    ],
+    "programming_requirements": [
+      {
+        "course_code": "CSCI 1101",
+        "course_name": "Programming Fundamentals",
+        "credits": 3,
+        "required": true,
+        "description": "Introduction to programming concepts."
+      },
+      {
+        "course_code": "CSCI 2101",
+        "course_name": "Object-Oriented Programming",
+        "credits": 3,
+        "required": true,
+        "description": "OOP principles and design patterns."
+      }
+    ]
+  },
+  "courses": {
+    "ITEC 1010": {
+      "name": "Introduction to IT",
+      "credits": 3,
+      "prerequisites": [],
+      "corequisites": [],
+      "description": "Overview of IT career paths and foundational concepts.",
+      "min_grade": "C"
+    },
+    "ITEC 2100": {
+      "name": "Database Design and SQL",
+      "credits": 3,
+      "prerequisites": ["CSCI 1101"],
+      "corequisites": [],
+      "description": "Relational databases and structured query language.",
+      "min_grade": "C"
+    },
+    "ITEC 2200": {
+      "name": "Network Fundamentals",
+      "credits": 3,
+      "prerequisites": ["ITEC 1010"],
+      "corequisites": [],
+      "description": "Computer networking concepts and protocols.",
+      "min_grade": "C"
+    },
+    "ITEC 3100": {
+      "name": "Systems Administration",
+      "credits": 3,
+      "prerequisites": ["ITEC 2200"],
+      "corequisites": [],
+      "description": "Server and system management practices.",
+      "min_grade": "C"
+    },
+    "ITEC 3200": {
+      "name": "Network Security",
+      "credits": 3,
+      "prerequisites": ["ITEC 2200"],
+      "corequisites": [],
+      "description": "Security principles and threat prevention.",
+      "min_grade": "C"
+    },
+    "ITEC 3300": {
+      "name": "Web Development Basics",
+      "credits": 3,
+      "prerequisites": ["CSCI 1101"],
+      "corequisites": [],
+      "description": "HTML, CSS, and basic web development.",
+      "min_grade": "C"
+    },
+    "ITEC 3400": {
+      "name": "Cybersecurity Essentials",
+      "credits": 3,
+      "prerequisites": ["ITEC 3200"],
+      "corequisites": [],
+      "description": "Applied cybersecurity practices and tools.",
+      "min_grade": "C"
+    },
+    "ITEC 3500": {
+      "name": "Mobile Application Development",
+      "credits": 3,
+      "prerequisites": ["CSCI 2101"],
+      "corequisites": [],
+      "description": "Development for mobile platforms.",
+      "min_grade": "C"
+    },
+    "ITEC 4050": {
+      "name": "IT Governance and Compliance",
+      "credits": 3,
+      "prerequisites": ["ITEC 4200"],
+      "corequisites": [],
+      "description": "Risk management and regulatory compliance.",
+      "min_grade": "C"
+    },
+    "ITEC 4100": {
+      "name": "Cloud Computing",
+      "credits": 3,
+      "prerequisites": ["ITEC 3100"],
+      "corequisites": [],
+      "description": "Cloud services, deployment models, and management.",
+      "min_grade": "C"
+    },
+    "ITEC 4200": {
+      "name": "IT Project Management",
+      "credits": 3,
+      "prerequisites": ["ITEC 1010"],
+      "corequisites": [],
+      "description": "Project planning, execution, and monitoring.",
+      "min_grade": "C"
+    },
+    "ITEC 4900": {
+      "name": "Capstone Project",
+      "credits": 3,
+      "prerequisites": ["ITEC 4100", "ITEC 4200"],
+      "corequisites": [],
+      "description": "Comprehensive IT project demonstration.",
+      "min_grade": "C"
+    },
+    "CSCI 1101": {
+      "name": "Programming Fundamentals",
+      "credits": 3,
+      "prerequisites": [],
+      "corequisites": [],
+      "description": "Introduction to programming concepts.",
+      "min_grade": "C"
+    },
+    "CSCI 2101": {
+      "name": "Object-Oriented Programming",
+      "credits": 3,
+      "prerequisites": ["CSCI 1101"],
+      "corequisites": [],
+      "description": "OOP principles and design patterns.",
+      "min_grade": "C"
+    }
+  }
+}
