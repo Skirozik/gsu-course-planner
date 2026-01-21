@@ -1,0 +1,140 @@
+{
+  "school": "Georgia Tech",
+  "major": "Computer Science",
+  "url": "https://catalog.gatech.edu/coursesaz/cs/",
+  "courses": {
+    "CS 1301": {
+      "name": "Introduction to Computing",
+      "credits": 3,
+      "description": "Introduction to computing principles and programming practices with an emphasis on the design, construction and implementation of problem solutions use of software tools.",
+      "prerequisites": [],
+      "category": "Core"
+    },
+    "CS 1331": {
+      "name": "Introduction to Object Oriented Programming",
+      "credits": 3,
+      "description": "Introduction to techniques and methods of object-oriented programming such as encapsulation, inheritance, and polymorphism. Emphasis on software development and individual programming skills.",
+      "prerequisites": ["CS 1301"],
+      "category": "Core"
+    },
+    "CS 1332": {
+      "name": "Data Structures and Algorithms for Applications",
+      "credits": 3,
+      "description": "Computer data structures and algorithms in the context of object-oriented programming. Focus on software development towards applications.",
+      "prerequisites": ["CS 1331"],
+      "category": "Core"
+    },
+    "CS 2050": {
+      "name": "Introduction to Discrete Mathematics for Computer Science",
+      "credits": 3,
+      "description": "Proof methods, strategy, correctness of algorithms over discrete structures. Induction and recursion. Complexity and order of growth. Number theoretic principles and algorithms. Counting and computability.",
+      "prerequisites": [],
+      "category": "Math"
+    },
+    "CS 2110": {
+      "name": "Computer Organization and Programming",
+      "credits": 4,
+      "description": "An introduction to basic computer hardware, machine language, assembly language, and C programming.",
+      "prerequisites": ["CS 1331"],
+      "category": "Core"
+    },
+    "CS 2200": {
+      "name": "Computer Systems and Networks",
+      "credits": 4,
+      "description": "A broad exposure to computer system structure and networking including software abstractions in operating systems for orchestrating the usage of the computing resources.",
+      "prerequisites": ["CS 1332"],
+      "category": "Core"
+    },
+    "CS 2316": {
+      "name": "Data Manipulation for Science and Industry",
+      "credits": 3,
+      "description": "Reading, manipulating, and exporting data for engineering, business, and scientific applications. Covers GUI's, File I/O, basic SQL, and web scraping.",
+      "prerequisites": ["CS 1331"],
+      "category": "Core"
+    },
+    "CS 2340": {
+      "name": "Objects and Design",
+      "credits": 3,
+      "description": "Object-oriented programming methods for dealing with large programs. Focus on quality processes, effective debugging techniques, and testing to assure a quality product.",
+      "prerequisites": ["CS 1332"],
+      "category": "Core"
+    },
+    "CS 3510": {
+      "name": "Design and Analysis of Algorithms",
+      "credits": 3,
+      "description": "Basic techniques of design and analysis of efficient algorithms for standard computational problems. NP-Completeness.",
+      "prerequisites": ["CS 1332", "CS 2050"],
+      "category": "Core"
+    },
+    "CS 3600": {
+      "name": "Introduction to Artificial Intelligence",
+      "credits": 3,
+      "description": "An introduction to artificial intelligence and machine learning. Topics include intelligent system design methodologies, search and problem solving, supervised and reinforced learning.",
+      "prerequisites": ["CS 1332"],
+      "category": "Elective"
+    },
+    "CS 3210": {
+      "name": "Design of Operating Systems",
+      "credits": 3,
+      "description": "Operating systems concepts, including multi-threading, scheduling, synchronization, communication, and access control. Projects will cover design and implementation of several operating systems components.",
+      "prerequisites": ["CS 2200"],
+      "category": "Core"
+    },
+    "CS 3251": {
+      "name": "Computer Networking I",
+      "credits": 3,
+      "description": "Introduction to problems in computer networking, including error recovery, medium access, routing, flow control, and transport. Emphasis on current best practice. Includes programming of networked applications.",
+      "prerequisites": ["CS 2200"],
+      "category": "Core"
+    },
+    "CS 3451": {
+      "name": "Computer Graphics",
+      "credits": 3,
+      "description": "Geometric constructions; transformations; perception; reflection models; photorealistic; non-photorealistic, and image-based rendering.",
+      "prerequisites": ["CS 1331"],
+      "category": "Elective"
+    },
+    "CS 4400": {
+      "name": "Introduction to Database Systems",
+      "credits": 3,
+      "description": "Comprehensive coverage of mainstream database concepts such as the entity-relationship model, relational databases, query languages, and database design methodology.",
+      "prerequisites": ["CS 1332"],
+      "category": "Core"
+    },
+    "CS 4641": {
+      "name": "Machine Learning",
+      "credits": 3,
+      "description": "Machine learning techniques and applications. Topics include foundational issues; inductive, analytical, numerical, and theoretical approaches; and real-world applications.",
+      "prerequisites": ["CS 1332", "CS 2050"],
+      "category": "Elective"
+    },
+    "CS 4476": {
+      "name": "Introduction to Computer Vision",
+      "credits": 3,
+      "description": "Introduction to computer vision including fundamentals of image formation, camera imaging geometry, feature detection and matching, stereo, motion estimation and tracking.",
+      "prerequisites": ["CS 1332"],
+      "category": "Elective"
+    },
+    "CS 4455": {
+      "name": "Video Game Design and Programming",
+      "credits": 3,
+      "description": "Techniques for electronic game design and programming, including graphics game engines, motion generation, behavioral control for autonomous characters.",
+      "prerequisites": ["CS 1331"],
+      "category": "Elective"
+    },
+    "CS 4650": {
+      "name": "Natural Language Understanding",
+      "credits": 3,
+      "description": "Methodologies for designing systems that comprehend natural language. Topics include lexical analysis, parsing, interpretation of sentences, semantic representation.",
+      "prerequisites": ["CS 1332"],
+      "category": "Elective"
+    }
+  },
+  "core_requirements": {
+    "Foundation": ["CS 1301", "CS 1331", "CS 1332"],
+    "Theory": ["CS 2050", "CS 3510"],
+    "Systems": ["CS 2110", "CS 2200", "CS 3210", "CS 3251"],
+    "Applications": ["CS 4400"],
+    "Electives": ["CS 3600", "CS 4641", "CS 4476", "CS 4455", "CS 4650", "CS 3451"]
+  }
+}

@@ -62,6 +62,8 @@ if 'ai_recommendations' not in st.session_state:
     st.session_state.ai_recommendations = None
 if 'selected_major' not in st.session_state:
     st.session_state.selected_major = None
+if 'selected_school' not in st.session_state:
+    st.session_state.selected_school = None
 
 # Initialize catalog loader
 catalog_loader = get_catalog_loader()
@@ -138,14 +140,23 @@ with tab1:
 
         # Student preferences form
         with st.form("preferences_form"):
-            # Select major
-            available_majors = catalog_loader.get_available_majors()
+            # Select school first
+            available_schools = catalog_loader.get_available_schools()
+            selected_school = st.selectbox(
+                "Select Your School",
+                options=available_schools,
+                help="Choose your institution to get accurate course recommendations"
+            )
+            
+            # Select major based on school
+            available_majors = catalog_loader.get_majors_for_school(selected_school)
             selected_major = st.selectbox(
                 "Select Your Major",
                 options=available_majors,
                 help="Choose your degree program to get tailored recommendations"
             )
             st.session_state.selected_major = selected_major
+            st.session_state.selected_school = selected_school
 
             # Career goals
             career_goals = st.text_area(

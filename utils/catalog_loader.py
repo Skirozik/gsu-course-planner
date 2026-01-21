@@ -10,7 +10,7 @@ from typing import Dict, List, Optional, Tuple
 from pathlib import Path
 
 class CatalogLoader:
-    """Loads and manages course catalogs for different majors"""
+    """Loads and manages course catalogs for different majors and schools"""
     
     def __init__(self, catalog_dir: str = None):
         """
@@ -26,7 +26,9 @@ class CatalogLoader:
             catalog_dir = current_dir / "data" / "course_catalogs"
         
         self.catalog_dir = Path(catalog_dir)
-        self.catalogs: Dict[str, Dict] = {}
+        self.catalogs: Dict[str, Dict] = {}  # Format: {school_major: catalog_data}
+        self.schools: set = set()  # Track available schools
+        self.majors_by_school: Dict[str, List[str]] = {}  # Format: {school: [majors]}
         self.load_all_catalogs()
     
     def load_all_catalogs(self) -> None:
@@ -37,66 +39,104 @@ class CatalogLoader:
         
         json_files = self.catalog_dir.glob("*.json")
         for json_file in json_files:
-            major_name = json_file.stem  # filename without extension
             try:
                 with open(json_file, 'r') as f:
                     catalog_data = json.load(f)
-                    # Store by major name for easy lookup
-                    major_key = catalog_data.get("metadata", {}).get("major", major_name)
-                    self.catalogs[major_key] = catalog_data
-                    print(f"[+] Loaded catalog: {major_key}")
+                    
+                    # Extract school and major info
+                    school = catalog_data.get("school", "Unknown")
+                    major = catalog_data.get("major", json_file.stem)
+                    
+                    # Create composite key for lookup
+                    composite_key = f"{school}_{major}"
+                    self.catalogs[composite_key] = catalog_data
+                    
+                    # Track schools and majors
+                    self.schools.add(school)
+                    if school not in self.majors_by_school:
+                        self.majors_by_school[school] = []
+                    self.majors_by_school[school].append(major)
+                    
+                    print(f"[+] Loaded catalog: {school} - {major}")
             except json.JSONDecodeError as e:
                 print(f"[!] Error loading {json_file}: {e}")
             except Exception as e:
                 print(f"[!] Unexpected error loading {json_file}: {e}")
     
     def get_available_majors(self) -> List[str]:
-        """Get list of available majors"""
+        """Get list of available majors (for backward compatibility)"""
         return sorted(list(self.catalogs.keys()))
     
-    def get_catalog(self, major: str) -> Optional[Dict]:
-        """Get the full catalog for a specific major"""
-        return self.catalogs.get(major)
+    def get_available_schools(self) -> List[str]:
+        """Get list of available schools"""
+        return sorted(list(self.schools))
     
-    def get_degree_requirements(self, major: str) -> Optional[Dict]:
+    def get_majors_for_school(self, school: str) -> List[str]:
+        """Get list of majors available for a specific school"""
+        return sorted(self.majors_by_school.get(school, []))
+    
+    def get_catalog(self, school: str = None, major: str = None) -> Optional[Dict]:
+        """
+        Get the full catalog for a specific school and major
+        
+        Args:
+            school: School name (e.g., "Georgia State University")
+            major: Major name (e.g., "Computer Science")
+        
+        Returns:
+            Catalog data or None if not found
+        """
+        if school and major:
+            composite_key = f"{school}_{major}"
+            return self.catalogs.get(composite_key)
+        
+        # For backward compatibility, accept composite key
+        if major and "_" in major:
+            return self.catalogs.get(major)
+        
+        # Try to find it if only major is provided
+        if major:
+            for key, catalog in self.catalogs.items():
+                if catalog.get("major") == major:
+                    return catalog
+        
+        return None
+    
+    def get_degree_requirements(self, school: str = None, major: str = None) -> Optional[Dict]:
         """Get degree requirements for a major"""
-        catalog = self.catalogs.get(major)
+        catalog = self.get_catalog(school, major)
         if catalog:
             return catalog.get("degree_requirements", {})
         return None
     
-    def get_core_courses(self, major: str) -> List[Dict]:
+    def get_core_courses(self, school: str = None, major: str = None) -> List[Dict]:
         """Get list of required core courses for a major"""
-        requirements = self.get_degree_requirements(major)
-        if requirements:
-            return requirements.get("core_courses", [])
+        catalog = self.get_catalog(school, major)
+        if catalog:
+            return catalog.get("core_requirements", {}).get("core", [])
         return []
     
-    def get_elective_courses(self, major: str) -> List[Dict]:
+    def get_elective_courses(self, school: str = None, major: str = None) -> List[Dict]:
         """Get list of elective courses for a major"""
-        requirements = self.get_degree_requirements(major)
-        if requirements:
-            return requirements.get("electives", [])
+        catalog = self.get_catalog(school, major)
+        if catalog:
+            return catalog.get("core_requirements", {}).get("electives", [])
         return []
     
-    def get_math_requirements(self, major: str) -> List[Dict]:
-        """Get list of math requirements for a major"""
-        requirements = self.get_degree_requirements(major)
-        if requirements:
-            return requirements.get("math_requirements", [])
-        return []
-    
-    def get_all_courses_for_major(self, major: str) -> Dict:
+    def get_all_courses_for_major(self, school: str = None, major: str = None) -> Dict:
         """Get all courses (with prerequisites) for a major"""
-        catalog = self.catalogs.get(major)
+        catalog = self.get_catalog(school, major)
         if catalog:
             return catalog.get("courses", {})
         return {}
     
-    def get_course_info(self, major: str, course_code: str) -> Optional[Dict]:
+    def get_course_info(self, school: str = None, major: str = None, course_code: str = None) -> Optional[Dict]:
         """Get detailed info for a specific course in a major's catalog"""
+        if course_code is None:
+            return None
+        
         course_code = course_code.upper().strip()
-        courses = self.get_all_courses_for_major(major)
+        courses = self.get_all_courses_for_major(school, major)
         return courses.get(course_code)
     
     def get_prerequisites(self, major: str, course_code: str) -> List[str]:
