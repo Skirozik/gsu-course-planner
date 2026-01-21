@@ -123,6 +123,13 @@ class CatalogLoader:
             return catalog.get("core_requirements", {}).get("electives", [])
         return []
     
+    def get_math_requirements(self, school: str = None, major: str = None) -> List[Dict]:
+        """Get list of math requirements for a major (backward compatibility)"""
+        catalog = self.get_catalog(school, major)
+        if catalog:
+            return catalog.get("core_requirements", {}).get("math", [])
+        return []
+    
     def get_all_courses_for_major(self, school: str = None, major: str = None) -> Dict:
         """Get all courses (with prerequisites) for a major"""
         catalog = self.get_catalog(school, major)
@@ -139,27 +146,28 @@ class CatalogLoader:
         courses = self.get_all_courses_for_major(school, major)
         return courses.get(course_code)
     
-    def get_prerequisites(self, major: str, course_code: str) -> List[str]:
+    def get_prerequisites(self, school: str = None, major: str = None, course_code: str = None) -> List[str]:
         """Get prerequisites for a course in a specific major"""
-        course = self.get_course_info(major, course_code)
+        course = self.get_course_info(school, major, course_code)
         if course:
             return course.get("prerequisites", [])
         return []
     
-    def get_corequisites(self, major: str, course_code: str) -> List[str]:
+    def get_corequisites(self, school: str = None, major: str = None, course_code: str = None) -> List[str]:
         """Get corequisites for a course in a specific major"""
-        course = self.get_course_info(major, course_code)
+        course = self.get_course_info(school, major, course_code)
         if course:
             return course.get("corequisites", [])
         return []
     
     def check_prerequisites_met(
-        self, major: str, course_code: str, completed_courses: List[str]
+        self, school: str = None, major: str = None, course_code: str = None, completed_courses: List[str] = None
     ) -> Dict:
         """
         Check if prerequisites are met for a course in a specific major
         
         Args:
+            school: School/institution
             major: Major/degree program
             course_code: Code of the course to check
             completed_courses: List of completed course codes
@@ -167,10 +175,13 @@ class CatalogLoader:
         Returns:
             Dict with can_take (bool), met, missing prerequisites
         """
-        course_code = course_code.upper().strip()
+        if completed_courses is None:
+            completed_courses = []
+        
+        course_code = course_code.upper().strip() if course_code else ""
         completed_upper = [c.upper().strip() for c in completed_courses]
         
-        prereqs = self.get_prerequisites(major, course_code)
+        prereqs = self.get_prerequisites(school, major, course_code)
         met = [p for p in prereqs if p in completed_upper]
         missing = [p for p in prereqs if p not in completed_upper]
         
@@ -181,11 +192,11 @@ class CatalogLoader:
             "all_prerequisites": prereqs
         }
     
-    def get_courses_unlocked_by(self, major: str, course_code: str) -> List[str]:
+    def get_courses_unlocked_by(self, school: str = None, major: str = None, course_code: str = None) -> List[str]:
         """Get courses that have this course as a prerequisite in a major"""
-        course_code = course_code.upper().strip()
+        course_code = course_code.upper().strip() if course_code else ""
         unlocked = []
-        courses = self.get_all_courses_for_major(major)
+        courses = self.get_all_courses_for_major(school, major)
         
         for code, info in courses.items():
             if course_code in info.get("prerequisites", []):
@@ -194,7 +205,7 @@ class CatalogLoader:
         return unlocked
     
     def get_all_prerequisites(
-        self, major: str, course_code: str, visited: set = None
+        self, school: str = None, major: str = None, course_code: str = None, visited: set = None
     ) -> List[str]:
         """
         Get all prerequisites recursively (the full prerequisite chain)
@@ -203,7 +214,7 @@ class CatalogLoader:
         if visited is None:
             visited = set()
         
-        course_code = course_code.upper().strip()
+        course_code = course_code.upper().strip() if course_code else ""
         
         if course_code in visited:
             return []
@@ -211,10 +222,10 @@ class CatalogLoader:
         visited.add(course_code)
         all_prereqs = []
         
-        direct_prereqs = self.get_prerequisites(major, course_code)
+        direct_prereqs = self.get_prerequisites(school, major, course_code)
         for prereq in direct_prereqs:
             # Get prerequisites of prerequisites first
-            deeper_prereqs = self.get_all_prerequisites(major, prereq, visited)
+            deeper_prereqs = self.get_all_prerequisites(school, major, prereq, visited)
             for p in deeper_prereqs:
                 if p not in all_prereqs:
                     all_prereqs.append(p)
@@ -225,12 +236,13 @@ class CatalogLoader:
         return all_prereqs
     
     def get_recommended_next_courses(
-        self, major: str, completed_courses: List[str], limit: int = 5
+        self, school: str = None, major: str = None, completed_courses: List[str] = None, limit: int = 5
     ) -> List[Dict]:
         """
         Get recommended next courses a student can take
         
         Args:
+            school: School/institution
             major: Student's major
             completed_courses: List of courses they've completed
             limit: Max number of recommendations to return
@@ -238,8 +250,11 @@ class CatalogLoader:
         Returns:
             List of courses they can now take, prioritized by prerequisites met
         """
+        if completed_courses is None:
+            completed_courses = []
+            
         completed_upper = [c.upper().strip() for c in completed_courses]
-        courses = self.get_all_courses_for_major(major)
+        courses = self.get_all_courses_for_major(school, major)
         
         available = []
         
@@ -250,7 +265,7 @@ class CatalogLoader:
             
             # Check if prerequisites are met
             prereqs_result = self.check_prerequisites_met(
-                major, course_code, completed_courses
+                school, major, course_code, completed_courses
             )
             
             if prereqs_result["can_take"]:
@@ -269,21 +284,25 @@ class CatalogLoader:
         return available[:limit]
     
     def get_degree_progress(
-        self, major: str, completed_courses: List[str]
+        self, school: str = None, major: str = None, completed_courses: List[str] = None
     ) -> Dict:
         """
         Calculate student's degree progress
         
         Args:
+            school: School/institution
             major: Student's major
             completed_courses: List of completed course codes
         
         Returns:
             Dict with progress metrics
         """
+        if completed_courses is None:
+            completed_courses = []
+            
         completed_upper = [c.upper().strip() for c in completed_courses]
-        core_courses = self.get_core_courses(major)
-        math_requirements = self.get_math_requirements(major)
+        core_courses = self.get_core_courses(school, major)
+        math_requirements = self.get_math_requirements(school, major)
         
         total_core = len(core_courses)
         completed_core = sum(1 for c in core_courses if c["course_code"] in completed_upper)
@@ -291,8 +310,8 @@ class CatalogLoader:
         total_math = len(math_requirements)
         completed_math = sum(1 for m in math_requirements if m["course_code"] in completed_upper)
         
-        catalog = self.get_catalog(major)
-        total_credits_required = catalog.get("metadata", {}).get("total_credits_required", 120)
+        catalog = self.get_catalog(school, major)
+        total_credits_required = catalog.get("metadata", {}).get("total_credits_required", 120) if catalog else 120
         
         # Calculate completed credits (simplified - would need course details)
         completed_credits = len(completed_courses) * 3  # Rough estimate
