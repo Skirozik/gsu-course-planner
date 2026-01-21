@@ -1,35 +1,114 @@
 """
-LLM Integration
+LLM Integration Module
 Handles communication with OpenAI API for course recommendations
+Redesigned for reliability and multi-environment support (local + Streamlit Cloud)
 """
 
 import os
-import streamlit as st
-from openai import OpenAI
-from typing import Dict, List
+import json
+import logging
+from typing import Dict, List, Optional, Tuple
 from dotenv import load_dotenv
 
-# Load environment variables
+# Try to import streamlit, but don't fail if it's not available
+try:
+    import streamlit as st
+    HAS_STREAMLIT = True
+except ImportError:
+    HAS_STREAMLIT = False
+
+from openai import OpenAI, APIError, AuthenticationError, RateLimitError
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Load environment variables from .env file
 load_dotenv()
 
 
-class CourseRecommender:
-    def __init__(self):
-        """Initialize the OpenAI API client"""
-        # Try to get API key from Streamlit secrets first (for Streamlit Cloud)
-        api_key = None
+class APIKeyManager:
+    """Centralized API key management for local and cloud environments"""
+    
+    @staticmethod
+    def get_api_key() -> Optional[str]:
+        """
+        Get OpenAI API key from available sources
+        Priority: Streamlit secrets > Environment variables > .env file
         
-        try:
-            api_key = st.secrets["OPENAI_API_KEY"]
-        except (KeyError, AttributeError):
-            # Fall back to environment variables (for local development)
-            api_key = os.getenv('OPENAI_API_KEY')
+        Returns:
+            API key string or None if not found
+        """
+        # Try Streamlit secrets (for Streamlit Cloud)
+        if HAS_STREAMLIT:
+            try:
+                return st.secrets.get("OPENAI_API_KEY")
+            except (KeyError, AttributeError, FileNotFoundError):
+                pass
         
+        # Try environment variables (set via system or .env)
+        api_key = os.getenv("OPENAI_API_KEY")
+        if api_key:
+            return api_key
+        
+        logger.warning("⚠️ No OpenAI API key found")
+        return None
+    
+    @staticmethod
+    def validate_api_key(api_key: Optional[str]) -> Tuple[bool, str]:
+        """
+        Validate that an API key exists and has correct format
+        
+        Returns:
+            Tuple of (is_valid, message)
+        """
         if not api_key:
-            raise ValueError("OPENAI_API_KEY not found in Streamlit secrets or environment variables")
+            return False, "API key not found"
+        
+        if not api_key.startswith("sk-"):
+            return False, "Invalid format. Should start with 'sk-'"
+        
+        if len(api_key) < 20:
+            return False, "API key too short"
+        
+        return True, "Valid"
 
-        self.client = OpenAI(api_key=api_key)
-        self.model = "gpt-4o"
+
+class CourseRecommender:
+    """Generate course recommendations using OpenAI's GPT model"""
+    
+    DEFAULT_MODEL = "gpt-4o-mini"
+    FALLBACK_MODEL = "gpt-3.5-turbo"
+    MAX_TOKENS = 1500
+    TEMPERATURE = 0.7
+    
+    def __init__(self, api_key: Optional[str] = None):
+        """
+        Initialize CourseRecommender with API key
+        
+        Args:
+            api_key: OpenAI API key (if None, will attempt to retrieve automatically)
+        
+        Raises:
+            ValueError: If API key cannot be found
+        """
+        # Get API key
+        self.api_key = api_key or APIKeyManager.get_api_key()
+        
+        # Validate API key
+        is_valid, message = APIKeyManager.validate_api_key(self.api_key)
+        if not is_valid:
+            raise ValueError(f"Invalid API Key: {message}")
+        
+        # Initialize OpenAI client
+        try:
+            self.client = OpenAI(api_key=self.api_key)
+            logger.info("✅ OpenAI client initialized")
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize OpenAI: {e}")
+            raise
+        
+        self.model = self.DEFAULT_MODEL
     
     def generate_schedule(
         self,
@@ -40,50 +119,74 @@ class CourseRecommender:
         allow_retakes: bool = False
     ) -> Dict:
         """
-        Generate personalized course schedule using OpenAI
+        Generate personalized course schedule recommendations
         
         Args:
-            student_data: Parsed transcript data
-            preferences: User preferences (major, career goals, etc.)
-            available_courses: List of available courses for next semester
-            degree_requirements: Required courses for the major
-            allow_retakes: Whether to recommend retaking courses (default: False)
+            student_data: Student academic information
+            preferences: Student preferences and constraints
+            available_courses: List of courses student can take
+            degree_requirements: Degree requirements structure
+            allow_retakes: Whether to allow course retakes
         
         Returns:
-            Dictionary with:
-            - recommended_courses: List of recommended courses
-            - reasoning: Explanation for recommendations
-            - alternatives: Backup course options
-            - graduation_timeline: Estimated graduation date
+            Dictionary with recommendations or fallback response
         """
-        
-        # Build the prompt
-        prompt = self._build_prompt(
-            student_data,
-            preferences,
-            available_courses,
-            degree_requirements,
-            allow_retakes
-        )
-        
-        # Call OpenAI API
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                max_tokens=4000,
-                temperature=0.7,
-                messages=[
-                    {"role": "user", "content": prompt}
-                ]
+            # Build prompt
+            prompt = self._build_prompt(
+                student_data,
+                preferences,
+                available_courses,
+                degree_requirements,
+                allow_retakes
             )
-
-            # Parse response
-            recommendations = self._parse_response(response.choices[0].message.content)
-            return recommendations
-
+            
+            if not prompt:
+                logger.warning("Prompt generation failed")
+                return self._get_error_response("Unable to generate recommendation prompt")
+            
+            # Call API
+            response = self._call_api(prompt)
+            
+            if response:
+                recommendations = self._parse_response(response)
+                logger.info("✅ Generated recommendations")
+                return recommendations
+            else:
+                return self._get_error_response("API call failed")
+        
+        except AuthenticationError:
+            logger.error("Invalid API key")
+            return self._get_error_response("Invalid API key. Check your credentials.")
+        except RateLimitError:
+            logger.error("Rate limit exceeded")
+            return self._get_error_response("Rate limit reached. Try again later.")
+        except APIError as e:
+            logger.error(f"OpenAI error: {e}")
+            return self._get_error_response(f"OpenAI error: {str(e)[:100]}")
         except Exception as e:
-            print(f"Error calling OpenAI API: {e}")
-            return self._get_fallback_response()
+            logger.error(f"Unexpected error: {e}")
+            return self._get_error_response(f"Error: {str(e)[:100]}")
+    
+    def _call_api(self, prompt: str) -> Optional[str]:
+        """Call OpenAI API with fallback model"""
+        for model in [self.model, self.FALLBACK_MODEL]:
+            try:
+                logger.info(f"Trying {model}...")
+                response = self.client.chat.completions.create(
+                    model=model,
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=self.MAX_TOKENS,
+                    temperature=self.TEMPERATURE,
+                    timeout=30
+                )
+                logger.info(f"✅ Got response from {model}")
+                return response.choices[0].message.content
+            except Exception as e:
+                logger.warning(f"{model} failed: {e}")
+                continue
+        
+        return None
     
     def _build_prompt(
         self,
@@ -92,201 +195,126 @@ class CourseRecommender:
         available_courses: List[Dict],
         degree_requirements: Dict,
         allow_retakes: bool = False
-    ) -> str:
-        """
-        Build the prompt for OpenAI with all necessary context
-        """
-        
-        retake_instruction = ""
-        if not allow_retakes:
-            retake_instruction = """
-IMPORTANT: DO NOT recommend retaking any courses the student has already completed.
-Only recommend NEW courses that the student has not yet taken.
-Focus on courses that satisfy degree requirements or prerequisites for future courses.
-"""
-        
-        prompt = f"""You are an expert academic advisor for Georgia State University students.
-
-STUDENT INFORMATION:
-- Name: {student_data.get('student_name', 'Student')}
-- Major: {preferences.get('major', 'Not specified')}
-- GPA: {student_data.get('gpa', 'N/A')}
-- Credits Completed: {student_data.get('total_credits', 0)} / 120
-
-COMPLETED COURSES:
-{self._format_completed_courses(student_data.get('completed_courses', []))}
-
-STUDENT PREFERENCES:
-- Career Goals: {preferences.get('career_goals', 'Not specified')}
-- Has Job: {preferences.get('has_job', False)}
-- Preferred Times: {preferences.get('preferred_times', ['No preference'])}
-- Max Courses Per Semester: {preferences.get('max_courses', 4)}
-- Learning Style: {preferences.get('learning_style', 'No preference')}
-- Prioritize: {preferences.get('prioritize_courses', 'None')}
-- Avoid: {preferences.get('avoid_courses', 'None')}
-
-AVAILABLE COURSES FOR NEXT SEMESTER:
-{self._format_available_courses(available_courses)}
-
-DEGREE REQUIREMENTS:
-{self._format_requirements(degree_requirements)}
-
-{retake_instruction}
-
-TASK:
-Based on the above information, recommend up to {preferences.get('max_courses', 4)} courses for the student's next semester.
-
-For each recommended course, provide:
-1. Course code and name
-2. Why this course is recommended
-3. How it fits the student's preferences and goals
-4. Difficulty level (Easy/Medium/Hard)
-5. Prerequisites satisfied (if any)
-
-Also provide:
-- Overall schedule difficulty balance
-- Estimated graduation timeline (semesters remaining)
-- {max(1, preferences.get('max_courses', 4) // 2)} alternative courses in case recommendations are full
-
-Format your response as JSON with this structure:
-{{
-    "recommended_courses": [
-        {{
-            "course_code": "CSC 4520",
-            "course_name": "Design and Analysis of Algorithms",
-            "reason": "...",
-            "difficulty": "Medium",
-            "prerequisites_met": true
-        }}
-    ],
-    "reasoning": "Overall explanation...",
-    "difficulty_balance": "Medium",
-    "semesters_remaining": 3,
-    "alternatives": [...]
-}}
-"""
-        return prompt
-    
-    def _format_completed_courses(self, courses: List[Dict]) -> str:
-        """Format completed courses for the prompt"""
-        if not courses:
-            return "No courses completed yet"
-        
-        formatted = []
-        for course in courses[:20]:  # Limit to avoid token overflow
-            formatted.append(f"- {course['course_code']}: {course['course_name']} (Grade: {course['grade']})")
-        
-        return "\n".join(formatted)
-    
-    def _format_available_courses(self, courses: List[Dict]) -> str:
-        """Format available courses for the prompt"""
-        if not courses:
-            return "No courses with met prerequisites found."
-
-        formatted = []
-        for course in courses:
-            prereqs = course.get('prerequisites', [])
-            prereq_str = f" (Prerequisites: {', '.join(prereqs)})" if prereqs else ""
-            formatted.append(f"- {course['course_code']}: {course.get('credits', 3)} credits{prereq_str}")
-
-        return "\n".join(formatted)
-    
-    def _format_requirements(self, requirements: Dict) -> str:
-        """Format degree requirements for the prompt"""
-        if not requirements:
-            return "No requirements data available"
-
-        formatted = []
-
-        # Format required courses
-        if "required_courses" in requirements:
-            formatted.append("COURSES STILL NEEDED:")
-            for req in requirements["required_courses"]:
-                if req.get("is_elective"):
-                    formatted.append(f"- {req['credits']} credits of electives: {req['courses'][0]}")
-                elif req.get("is_choice"):
-                    formatted.append(f"- {req['credits']} credits: Choose from {' OR '.join(req['courses'])}")
-                else:
-                    formatted.append(f"- {req['courses'][0]} ({req['credits']} credits)")
-
-        # Format summary if available
-        if "summary" in requirements:
-            summary = requirements["summary"]
-            if summary.get("degree_name"):
-                formatted.insert(0, f"DEGREE: {summary['degree_name']}")
-
-        return "\n".join(formatted) if formatted else "No specific requirements found"
-    
-    def _parse_response(self, response_text: str) -> Dict:
-        """
-        Parse Claude's JSON response
-        """
-        import json
+    ) -> Optional[str]:
+        """Build the recommendation prompt"""
         
         try:
-            # Try to extract JSON from response
-            # Claude might wrap it in markdown code blocks
+            completed = self._format_completed_courses(student_data.get("completed_courses", []))
+            available = self._format_available_courses(available_courses)
+            reqs = self._format_requirements(degree_requirements)
+            
+            max_courses = preferences.get('max_courses', 4)
+            
+            prompt = f"""Academic Advisor - Recommend {max_courses} courses for next semester.
+
+STUDENT:
+- GPA: {student_data.get('gpa', 'N/A')}
+- Credits: {student_data.get('total_credits', 0)}/120
+- Completed: {completed}
+
+PREFERENCES:
+- Max Courses: {max_courses}
+- Goals: {preferences.get('career_goals', 'N/A')}
+- Working: {preferences.get('has_job', False)}
+
+AVAILABLE COURSES (Prerequisites Met):
+{available}
+
+REQUIREMENTS:
+{reqs}
+
+{"⚠️ Only recommend NEW courses, not retakes." if not allow_retakes else ""}
+
+Respond with JSON only:
+{{
+    "recommended_courses": [
+        {{"course_code": "...", "course_name": "...", "reason": "...", "difficulty": "Easy/Medium/Hard"}}
+    ],
+    "reasoning": "Brief explanation",
+    "difficulty_balance": "Light/Balanced/Challenging",
+    "semesters_remaining": 3,
+    "alternatives": []
+}}"""
+            
+            return prompt
+        except Exception as e:
+            logger.error(f"Error building prompt: {e}")
+            return None
+    
+    def _format_completed_courses(self, courses: List[Dict]) -> str:
+        """Format completed courses"""
+        if not courses:
+            return "None"
+        
+        formatted = [f"{c.get('course_code', '?')}: {c.get('course_name', '?')}" for c in courses[:8]]
+        return "; ".join(formatted) if formatted else "None"
+    
+    def _format_available_courses(self, courses: List[Dict]) -> str:
+        """Format available courses"""
+        if not courses:
+            return "No courses available"
+        
+        formatted = [f"- {c.get('course_code', '?')} ({c.get('credits', 3)} cr)" for c in courses[:15]]
+        return "\n".join(formatted) if formatted else "No courses"
+    
+    def _format_requirements(self, requirements: Dict) -> str:
+        """Format degree requirements"""
+        if not requirements:
+            return "No requirements"
+        
+        formatted = []
+        required = requirements.get("required_courses", [])
+        
+        if required:
+            for req in required[:8]:
+                code = req.get("courses", ["Unknown"])[0]
+                creds = req.get("credits", 3)
+                formatted.append(f"- {code} ({creds} cr)")
+        
+        return "\n".join(formatted) if formatted else "No requirements"
+    
+    def _parse_response(self, response_text: str) -> Dict:
+        """Parse OpenAI response and extract JSON"""
+        try:
+            json_str = response_text
+            
+            # Remove markdown code blocks
             if "```json" in response_text:
                 json_str = response_text.split("```json")[1].split("```")[0]
             elif "```" in response_text:
                 json_str = response_text.split("```")[1].split("```")[0]
-            else:
-                json_str = response_text
             
-            return json.loads(json_str.strip())
+            data = json.loads(json_str.strip())
+            
+            # Validate structure
+            if "recommended_courses" in data:
+                logger.info("✅ Parsed response successfully")
+                return data
+            else:
+                return self._get_error_response("Invalid response structure")
         
-        except:
-            # If parsing fails, return the raw text
-            return {
-                "recommended_courses": [],
-                "reasoning": response_text,
-                "difficulty_balance": "Unknown",
-                "semesters_remaining": "Unknown",
-                "alternatives": []
-            }
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON error: {e}")
+            return self._get_error_response(f"Parse error: {str(e)[:50]}")
+        except Exception as e:
+            logger.error(f"Error: {e}")
+            return self._get_error_response(str(e)[:50])
     
-    def _get_fallback_response(self) -> Dict:
-        """
-        Fallback response if API call fails
-        """
+    def _get_error_response(self, error_msg: str = "Error") -> Dict:
+        """Return error response"""
         return {
-            "recommended_courses": [
-                {
-                    "course_code": "ERROR",
-                    "course_name": "API Error - Please try again",
-                    "reason": "Unable to connect to AI service",
-                    "difficulty": "N/A",
-                    "prerequisites_met": False
-                }
-            ],
-            "reasoning": "There was an error generating recommendations. Please check your API key and try again.",
-            "difficulty_balance": "Unknown",
-            "semesters_remaining": "Unknown",
+            "recommended_courses": [],
+            "reasoning": f"❌ {error_msg}",
+            "difficulty_balance": "N/A",
+            "semesters_remaining": "N/A",
             "alternatives": []
         }
 
 
-# Example usage
-if __name__ == "__main__":
-    # This would be called from the main app
-    recommender = CourseRecommender()
-    
-    # Test with mock data
-    student_data = {
-        "student_name": "Test Student",
-        "gpa": 3.5,
-        "total_credits": 90,
-        "completed_courses": [
-            {"course_code": "CSC 1301", "course_name": "Intro to CS", "grade": "A", "credits": 3}
-        ]
-    }
-    
-    preferences = {
-        "major": "Computer Science",
-        "career_goals": "Software Engineering",
-        "has_job": True,
-        "max_courses": 4
-    }
-    
-    # schedule = recommender.generate_schedule(student_data, preferences, [], {})
-    # print(schedule)
+def get_course_recommender(api_key: Optional[str] = None) -> Optional[CourseRecommender]:
+    """Factory function to safely create a recommender"""
+    try:
+        return CourseRecommender(api_key=api_key)
+    except ValueError as e:
+        logger.error(f"Cannot create recommender: {e}")
+        return None
