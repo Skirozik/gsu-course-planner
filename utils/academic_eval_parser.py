@@ -89,13 +89,18 @@ def parse_student_info(text: str) -> Dict:
     if gpa_match:
         info["gpa"] = float(gpa_match.group(1))
 
-    # Major/Pathway
-    major_match = re.search(r'Majors/Pathway\s+([A-Za-z\-\s]+?)(?=College|$)', text)
+    # Major/Pathway - handle both "BS/BA Major Name" and "HS: Major Name" formats
+    major_match = re.search(r'Majors/Pathway\s+(?:(?:HS|BS|BA):\s*)?([A-Za-z0-9\-\s&,]+?)\s+College', text)
     if major_match:
-        info["major"] = major_match.group(1).strip()
+        major_text = major_match.group(1).strip()
+        # Remove common prefixes if they weren't caught by the regex
+        for prefix in ['HS:', 'BS:', 'BA:']:
+            if major_text.startswith(prefix):
+                major_text = major_text[len(prefix):].strip()
+        info["major"] = major_text
 
-    # College
-    college_match = re.search(r'College\s+(College of [A-Za-z\s&]+?)(?=Degree|$)', text)
+    # College - handle both "College of ..." and other college name formats
+    college_match = re.search(r'College\s+([A-Za-z0-9\s&,\.]+?)(?=Degree|$)', text)
     if college_match:
         info["college"] = college_match.group(1).strip()
 

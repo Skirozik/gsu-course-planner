@@ -20,38 +20,221 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS for GSU colors
+# Custom CSS for GSU colors - Enhanced Modern Design
 st.markdown("""
     <style>
-    .main-header {
-        color: #0039A6;
-        text-align: center;
-        padding: 1rem 0;
+    /* Main theme colors */
+    :root {
+        --gsu-blue: #0039A6;
+        --gsu-gold: #FFB81C;
+        --gsu-light: #E8F0FF;
+        --gsu-dark: #1a1a2e;
     }
-    .stButton>button {
-        background-color: #0039A6;
+    
+    /* Main header styling */
+    .main-header {
+        background: linear-gradient(135deg, #0039A6 0%, #003d85 100%);
         color: white;
+        text-align: center;
+        padding: 2.5rem 2rem;
+        border-radius: 15px;
+        box-shadow: 0 8px 16px rgba(0, 57, 166, 0.15);
+        margin-bottom: 1rem;
+    }
+    
+    .main-header h1 {
+        margin: 0;
+        font-size: 2.5em;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+    }
+    
+    .tagline {
+        color: #FFB81C;
+        font-size: 1.1em;
+        font-weight: 500;
+        margin-top: 0.5rem;
+    }
+    
+    /* Button styling */
+    .stButton>button {
+        background: linear-gradient(135deg, #0039A6 0%, #003d85 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(0, 57, 166, 0.2);
         width: 100%;
     }
+    
+    .stButton>button:hover {
+        background: linear-gradient(135deg, #003d85 0%, #002d5a 100%);
+        box-shadow: 0 6px 16px rgba(0, 57, 166, 0.3);
+        transform: translateY(-2px);
+    }
+    
+    /* Card styling */
     .course-card {
+        background: linear-gradient(135deg, #f8f9ff 0%, #f0f2f6 100%);
+        padding: 1.25rem;
+        border-radius: 12px;
+        margin-bottom: 1rem;
+        border-left: 4px solid #0039A6;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s ease;
+    }
+    
+    .course-card:hover {
+        box-shadow: 0 4px 16px rgba(0, 57, 166, 0.12);
+        transform: translateY(-2px);
+    }
+    
+    /* Info box styling */
+    .info-box {
+        background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%);
+        border-left: 4px solid #0039A6;
+        padding: 1.25rem;
+        border-radius: 8px;
+        margin: 1rem 0;
+    }
+    
+    .success-box {
+        background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+        border-left: 4px solid #4CAF50;
+        padding: 1.25rem;
+        border-radius: 8px;
+        margin: 1rem 0;
+    }
+    
+    .warning-box {
+        background: linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%);
+        border-left: 4px solid #FF9800;
+        padding: 1.25rem;
+        border-radius: 8px;
+        margin: 1rem 0;
+    }
+    
+    /* Section headers */
+    .section-header {
+        color: #0039A6;
+        font-size: 1.4em;
+        font-weight: 700;
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 3px solid #FFB81C;
+    }
+    
+    .subsection-header {
+        color: #003d85;
+        font-size: 1.15em;
+        font-weight: 600;
+        margin-top: 1.5rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    /* Tab styling */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 2px;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
         background-color: #f0f2f6;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        margin-bottom: 0.5rem;
+        border-radius: 8px 8px 0 0;
+        padding: 12px 24px;
+        font-weight: 600;
+        color: #666;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background-color: #0039A6;
+        color: white;
+    }
+    
+    /* Expander styling */
+    .streamlit-expander {
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        margin: 0.5rem 0;
+    }
+    
+    /* Progress bar styling */
+    .stProgress > div > div > div > div {
+        background-color: #0039A6;
+    }
+    
+    /* Metric card styling */
+    .metric-card {
+        background: linear-gradient(135deg, #f8f9ff 0%, #f0f2f6 100%);
+        padding: 1.5rem;
+        border-radius: 12px;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        border-top: 4px solid #0039A6;
+    }
+    
+    /* List styling */
+    .course-list {
+        list-style: none;
+        padding-left: 0;
+    }
+    
+    .course-list li {
+        padding: 0.75rem 1rem;
+        margin: 0.5rem 0;
+        background-color: #f8f9ff;
+        border-left: 3px solid #0039A6;
+        border-radius: 4px;
+    }
+    
+    /* Footer styling */
+    .footer {
+        text-align: center;
+        color: #999;
+        padding: 2rem 0;
+        margin-top: 3rem;
+        border-top: 2px solid #e0e0e0;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .main-header {
+            padding: 1.5rem 1rem;
+        }
+        
+        .main-header h1 {
+            font-size: 1.8em;
+        }
     }
     </style>
     """, unsafe_allow_html=True)
 
-# Header
-st.markdown("<h1 class='main-header'>🎓 GSU Course Planning Assistant</h1>", unsafe_allow_html=True)
-st.markdown("### AI-powered course recommendations based on your academic evaluation")
+# Header with improved design
+st.markdown("""
+<div class="main-header">
+    <h1>🎓 GSU Course Planner</h1>
+    <p class="tagline">AI-Powered Academic Planning Assistant</p>
+</div>
+""", unsafe_allow_html=True)
 
-# Disclaimer
-with st.expander("⚠️ Important Disclaimer"):
-    st.warning("""
-    This is NOT official GSU software. Always verify course plans with your academic advisor.
-    This tool is for planning purposes only and should not replace official academic advising.
-    """)
+st.markdown("""
+<div style="background: linear-gradient(90deg, #E8F0FF 0%, #FFF8E1 100%); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+    <p style="margin: 0; color: #333; font-size: 1em;"><strong>Welcome!</strong> Upload your DegreeWorks academic evaluation to get personalized course recommendations, track your progress, and plan your path to graduation.</p>
+</div>
+""", unsafe_allow_html=True)
+
+# Disclaimer with improved styling
+with st.expander("⚠️ Important Disclaimer", expanded=False):
+    st.markdown("""
+    <div class="warning-box">
+    <strong>⚠️ Important Notice</strong><br>
+    This is <strong>NOT official GSU software</strong>. Always verify course plans with your academic advisor. 
+    This tool is for planning purposes only and should not replace official academic advising. 
+    Recommendations are based on publicly available course catalogs and may not reflect current availability or prerequisite changes.
+    </div>
+    """, unsafe_allow_html=True)
 
 # Initialize session state
 if 'eval_data' not in st.session_state:
@@ -75,17 +258,32 @@ with tab1:
     col1, col2 = st.columns([1, 1])
 
     with col1:
-        st.subheader("📄 Step 1: Upload Your Academic Evaluation")
+        st.markdown("<div class='section-header'>📄 Step 1: Upload Your Academic Evaluation</div>", unsafe_allow_html=True)
+        
+        st.markdown("""
+        <div class="info-box">
+        <strong>How to get your Academic Evaluation:</strong><br>
+        1. Log into <strong>PAWS</strong> (paws.gsu.edu)<br>
+        2. Go to <strong>Student</strong> tab<br>
+        3. Click <strong>DegreeWorks</strong><br>
+        4. Click <strong>Print/Export</strong> and save as PDF
+        </div>
+        """, unsafe_allow_html=True)
 
         # File uploader
         uploaded_file = st.file_uploader(
-            "Upload your Academic Evaluation PDF from DegreeWorks",
+            "Upload your DegreeWorks PDF",
             type=['pdf'],
-            help="Download this from PAWS > Student > DegreeWorks > Print/Save as PDF"
+            help="Your academic evaluation showing completed and required courses"
         )
 
         if uploaded_file:
-            st.success(f"✅ File uploaded: {uploaded_file.name}")
+            st.markdown("""
+            <div class="success-box">
+            ✅ <strong>File loaded successfully!</strong><br>
+            Analyzing your academic evaluation...
+            </div>
+            """, unsafe_allow_html=True)
 
             # Parse the academic evaluation
             with st.spinner("📊 Analyzing your academic evaluation..."):
@@ -94,37 +292,89 @@ with tab1:
                     st.session_state.eval_data = parse_academic_eval(file_content)
                     eval_data = st.session_state.eval_data
 
-                    # Show parsed info
+                    # Show parsed info with better layout
                     with st.expander("📋 Your Academic Summary", expanded=True):
                         info = eval_data["student_info"]
-                        col_info1, col_info2 = st.columns(2)
-
-                        with col_info1:
-                            st.write(f"**Name:** {info['student_name']}")
-                            st.write(f"**Major:** {info['major']}")
-
-                        with col_info2:
-                            st.write(f"**Credits:** {info['credits_applied']}/{info['credits_required']}")
+                        
+                        # Student info cards
+                        st.markdown("<div class='subsection-header'>👤 Student Information</div>", unsafe_allow_html=True)
+                        metric_cols = st.columns(4)
+                        
+                        with metric_cols[0]:
+                            st.markdown(f"""
+                            <div class="metric-card">
+                            <strong>Name</strong><br>
+                            {info['student_name']}
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
+                        with metric_cols[1]:
+                            st.markdown(f"""
+                            <div class="metric-card">
+                            <strong>Major</strong><br>
+                            {info['major']}
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
+                        with metric_cols[2]:
+                            st.markdown(f"""
+                            <div class="metric-card">
+                            <strong>GPA</strong><br>
+                            {info['gpa']:.2f}
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
+                        with metric_cols[3]:
                             progress_pct = (info['credits_applied'] / info['credits_required']) * 100
-                            st.progress(progress_pct / 100)
-                            st.write(f"**Progress:** {progress_pct:.1f}%")
+                            st.markdown(f"""
+                            <div class="metric-card">
+                            <strong>Progress</strong><br>
+                            {progress_pct:.1f}%
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
+                        # Progress bar
+                        st.markdown("<div class='subsection-header'>📈 Credits Progress</div>", unsafe_allow_html=True)
+                        st.progress(info['credits_applied'] / info['credits_required'])
+                        st.markdown(f"**{info['credits_applied']}/{info['credits_required']} credits** ({progress_pct:.1f}%)")
 
-                    # Show completed courses
+                    # Show completed courses with better styling
                     with st.expander(f"✅ Completed Courses ({len(eval_data['completed_courses'])})"):
+                        st.markdown("<div class='subsection-header'>Successfully Completed</div>", unsafe_allow_html=True)
                         for course in eval_data["completed_courses"]:
-                            st.write(f"- **{course['course_code']}**: {course['course_name']} ({course['grade']})")
+                            st.markdown(f"""
+                            <div class="course-card">
+                            <strong>{course['course_code']}</strong> — {course['course_name']}<br>
+                            <small>Grade: <span style="color: #0039A6; font-weight: bold;">{course['grade']}</span> | 
+                            Credits: <span style="color: #0039A6; font-weight: bold;">{course['credits']}</span> | 
+                            Completed: {course['term']}</small>
+                            </div>
+                            """, unsafe_allow_html=True)
 
                     # Show in-progress courses
                     if eval_data["in_progress_courses"]:
                         with st.expander(f"📚 Currently Enrolled ({len(eval_data['in_progress_courses'])})"):
+                            st.markdown("<div class='subsection-header'>Currently Taking</div>", unsafe_allow_html=True)
                             for course in eval_data["in_progress_courses"]:
-                                st.write(f"- **{course['course_code']}**: {course['course_name']} ({course['credits']} credits)")
+                                st.markdown(f"""
+                                <div class="course-card" style="border-left-color: #FF9800;">
+                                <strong>{course['course_code']}</strong> — {course['course_name']}<br>
+                                <small>Credits: <span style="color: #FF9800; font-weight: bold;">{course['credits']}</span> | 
+                                Term: {course['term']}</small>
+                                </div>
+                                """, unsafe_allow_html=True)
 
                     # Show required courses
                     with st.expander(f"📝 Courses Still Needed ({len(eval_data['required_courses'])})"):
+                        st.markdown("<div class='subsection-header'>Remaining Requirements</div>", unsafe_allow_html=True)
                         for req in eval_data["required_courses"]:
                             if req.get("is_elective"):
-                                st.write(f"- {req['credits']} credits of electives: {req['courses'][0]}")
+                                st.markdown(f"""
+                                <div class="course-card" style="border-left-color: #4CAF50;">
+                                📋 <strong>{req['credits']} credits</strong> of electives<br>
+                                <small>{req['courses'][0]}</small>
+                                </div>
+                                """, unsafe_allow_html=True)
                             elif req.get("is_choice"):
                                 st.write(f"- {req['credits']} credits: {' OR '.join(req['courses'])}")
                             else:
@@ -752,86 +1002,165 @@ with tab2:
                 st.markdown(f"**Corequisites:** {', '.join(coreqs)}")
 
 with tab4:
+    st.markdown("<div class='section-header'>🔍 How This Works</div>", unsafe_allow_html=True)
+
     st.markdown("""
-    ### 🔍 How This Works
-
     This AI-powered tool helps you plan your course schedule by:
-
-    1. **📄 Analyzing Your Academic Evaluation**
-       - Extracts completed courses and grades
-       - Identifies remaining degree requirements
-       - Checks which prerequisites you've satisfied
-       - Finds courses you're eligible to take
-
-    2. **🎯 Understanding Your Preferences**
-       - Career goals and interests
-       - Schedule constraints (work, preferred times)
-       - Course load preferences
-
-    3. **🤖 AI-Powered Recommendations**
-       - Uses GPT-4 to analyze your specific situation
-       - Matches available courses to your needs
-       - Balances difficulty across your schedule
-       - Optimizes your path to graduation
-
-    4. **📊 Smart Planning**
-       - Shows degree progress
-       - Predicts graduation timeline
-       - Suggests alternative courses
-       - Respects prerequisite chains
-
-    ### 📥 How to Get Your Academic Evaluation
-
-    1. Log into **PAWS** (paws.gsu.edu)
-    2. Go to **Student** tab
-    3. Click **DegreeWorks**
-    4. Click **Print** or save as PDF
-    5. Upload the PDF here!
-
-    ### 🔒 Privacy & Data
-
-    - Your data is processed in your browser session only
-    - We don't permanently store your personal information
-    - The AI sees only what's needed for recommendations
-    - Close the browser to clear all data
     """)
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+        <div class="course-card">
+        <h3 style="color: #0039A6; margin-top: 0;">📄 Analyzing Your Evaluation</h3>
+        • Extracts completed courses and grades<br>
+        • Identifies remaining degree requirements<br>
+        • Checks which prerequisites you've satisfied<br>
+        • Finds courses you're eligible to take
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("""
+        <div class="course-card">
+        <h3 style="color: #0039A6; margin-top: 0;">🎯 Understanding Preferences</h3>
+        • Career goals and interests<br>
+        • Schedule constraints (work, preferred times)<br>
+        • Course load preferences<br>
+        • Difficulty preferences
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("""
+        <div class="course-card">
+        <h3 style="color: #0039A6; margin-top: 0;">🤖 AI Recommendations</h3>
+        • Uses GPT to analyze your situation<br>
+        • Matches courses to your goals<br>
+        • Balances difficulty across semester<br>
+        • Optimizes path to graduation
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("""
+        <div class="course-card">
+        <h3 style="color: #0039A6; margin-top: 0;">📊 Smart Planning</h3>
+        • Shows degree progress<br>
+        • Predicts graduation timeline<br>
+        • Suggests alternative courses<br>
+        • Respects prerequisites chains
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("<div class='section-header'>📥 How to Get Your Academic Evaluation</div>", unsafe_allow_html=True)
+    
+    steps = [
+        "Log into **PAWS** (paws.gsu.edu)",
+        "Go to the **Student** tab",
+        "Click **DegreeWorks**",
+        "Click **Print** or **Export** and save as PDF",
+        "Upload the PDF to get started!"
+    ]
+    
+    for i, step in enumerate(steps, 1):
+        st.markdown(f"""
+        <div class="course-card">
+        <strong style="color: #0039A6;">Step {i}</strong><br>
+        {step}
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("<div class='section-header'>🔒 Privacy & Data</div>", unsafe_allow_html=True)
+    st.markdown("""
+    <div class="info-box">
+    • Your data is processed in your browser session only<br>
+    • We don't permanently store your personal information<br>
+    • The AI sees only what's needed for recommendations<br>
+    • Close the browser to clear all data
+    </div>
+    """, unsafe_allow_html=True)
 
 with tab5:
+    st.markdown("<div class='section-header'>📊 About This Project</div>", unsafe_allow_html=True)
+    
     st.markdown("""
-    ### 📊 About This Project
-
-    **GSU Course Planning AI** is a student-built tool designed to help Georgia State University
-    students make better course planning decisions.
-
-    #### 🎯 What It Does
-    - Parses DegreeWorks academic evaluations
-    - Identifies courses you can take (prerequisites met)
-    - Uses AI to recommend optimal course combinations
-    - Tracks your progress toward graduation
-
-    #### ⚠️ Limitations
-    - Not official GSU software
-    - Recommendations should be verified with advisors
-    - Course availability changes each semester
-    - AI recommendations are suggestions, not guarantees
-
-    #### 🚀 Version
-    - **Current Version:** 0.2.0
-    - **Last Updated:** January 2026
-    - **Supported:** Computer Science majors (more coming!)
-
-    #### 📧 Feedback
-    Found a bug? Have a suggestion? Let us know!
-
-    ---
-
-    Built with ❤️ by a GSU student, for GSU students.
-    """)
+    <div class="info-box">
+    <h3 style="color: #0039A6; margin-top: 0;">GSU Course Planning AI</h3>
+    A student-built tool designed to help Georgia State University students make better course planning decisions.
+    </div>
+    """, unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown("""
+        <div class="metric-card">
+        <h4 style="color: #0039A6; margin: 0;">🎯 What It Does</h4>
+        <ul style="margin: 1rem 0; padding-left: 1.5rem;">
+        <li>Parses DegreeWorks evaluations</li>
+        <li>Identifies eligible courses</li>
+        <li>AI course recommendations</li>
+        <li>Tracks graduation progress</li>
+        </ul>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("""
+        <div class="metric-card">
+        <h4 style="color: #0039A6; margin: 0;">⚠️ Limitations</h4>
+        <ul style="margin: 1rem 0; padding-left: 1.5rem;">
+        <li>Not official GSU software</li>
+        <li>Verify with advisors</li>
+        <li>Availability changes</li>
+        <li>Suggestions only</li>
+        </ul>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        st.markdown("""
+        <div class="metric-card">
+        <h4 style="color: #0039A6; margin: 0;">🚀 Version Info</h4>
+        <ul style="margin: 1rem 0; padding-left: 1.5rem;">
+        <li><strong>Version:</strong> 0.2.0</li>
+        <li><strong>Updated:</strong> January 2026</li>
+        <li><strong>Majors:</strong> 6+</li>
+        <li><strong>Courses:</strong> 500+</li>
+        </ul>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("<div class='section-header'>📧 Feedback & Support</div>", unsafe_allow_html=True)
+    
+    st.markdown("""
+    <div class="success-box">
+    Found a bug? Have a suggestion? Want to contribute? Let us know!<br><br>
+    This tool is built by and for GSU students. Your feedback helps us improve it.
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("<div class='section-header'>❤️ Credits</div>", unsafe_allow_html=True)
+    
+    st.markdown("""
+    <div class="course-card">
+    Built with ❤️ by a GSU student, for GSU students.<br><br>
+    Thanks to:<br>
+    • Georgia State University for the course data<br>
+    • OpenAI for AI-powered recommendations<br>
+    • Streamlit for the web framework<br>
+    • The GSU community for feedback and support
+    </div>
+    """, unsafe_allow_html=True)
 
 # Footer
 st.markdown("---")
-st.markdown(
-    "<p style='text-align: center; color: gray;'>⚠️ Not affiliated with Georgia State University | "
-    "Always verify course plans with your academic advisor</p>",
-    unsafe_allow_html=True
-)
+st.markdown("""
+<div class="footer">
+    <p style="margin: 0.5rem 0;">⚠️ <strong>Not affiliated with Georgia State University</strong></p>
+    <p style="margin: 0.5rem 0;">Always verify course plans with your academic advisor before registration</p>
+    <p style="margin: 1rem 0; font-size: 0.9em; color: #999;">
+    Built with ❤️ by a GSU student | v0.2.0 | Last Updated: January 2026
+    </p>
+</div>
+""", unsafe_allow_html=True)
