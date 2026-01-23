@@ -45,39 +45,83 @@ def generate_sample_sections(course_code: str, num_sections: int = 3) -> list:
     """
     from utils.demo_professors import DEMO_PROFESSORS
     import random
+    import hashlib
 
     # Sample times and locations
     times = ["MWF 10:00-10:50", "TTh 2:00-3:15", "MW 6:00-7:15", "TTh 10:00-11:15"]
     locations = ["Classroom South 101", "Langdale Hall 200", "Online", "Library 305", "Science Building 201"]
 
-    # Get professor from demo data or use TBA
-    professor = DEMO_PROFESSORS.get(course_code, "Staff")
+    # Get primary professor from demo data
+    primary_professor = DEMO_PROFESSORS.get(course_code, "Staff")
 
-    # Generate multiple professors for the course
-    sample_professors = [
-        professor,
-        "Smith, John",
-        "Lee, Angela",
-        "Johnson, Mary",
-        "Davis, Robert",
-        "Staff"
-    ]
+    # Create department-specific professor pools
+    # Extract department code (e.g., "CSC" from "CSC 3320")
+    dept = course_code.split()[0] if ' ' in course_code else course_code[:3]
+
+    # Professor pools by department
+    professor_pools = {
+        "CSC": ["Robert Robinson", "Sarah Chen", "David Kim", "Emily Rodriguez", "Daniel Taylor"],
+        "CIS": ["Andrew King", "Rebecca Wright", "Matthew Adams", "Michelle Scott", "Joshua Green"],
+        "FI": ["Christina Edwards", "William Turner", "Gregory Campbell", "Rachel Parker"],
+        "MGT": ["Jonathan Collins", "Timothy Evans", "Nicholas Morris", "Samantha Stewart"],
+        "MK": ["Samantha Stewart", "Brandon Perez", "Victoria Roberts"],
+        "ACCT": ["Victoria Roberts", "William Turner", "Lauren Nelson"],
+        "ECON": ["Stephanie Phillips", "Gregory Campbell", "Timothy Evans"],
+        "MATH": ["Robert Davis", "Nancy Clark", "Steven Hall", "Amy Allen", "Brian Young"],
+        "HS": ["Elizabeth Rogers", "Charles Reed", "Paul Morgan", "Barbara Bell"],
+        "BIOL": ["George Rivera", "Helen Cooper", "Margaret Cook"],
+        "CS": ["David Joyner", "Monica Sweat", "Thad Starner", "Charles Isbell"],
+    }
+
+    # Get professor pool for this department, or use generic pool
+    dept_professors = professor_pools.get(dept, [
+        "Anderson, James", "Baker, Susan", "Carter, Michael",
+        "Davis, Jennifer", "Evans, Robert"
+    ])
+
+    # Create deterministic but varied selection based on course code
+    # This ensures same course always gets same professors
+    seed = int(hashlib.md5(course_code.encode()).hexdigest(), 16) % (10**8)
+    random.seed(seed)
+
+    # Build professor list for this course
+    available_professors = dept_professors.copy()
+    random.shuffle(available_professors)
+
+    # Ensure primary professor from demo data is included if available
+    sample_professors = []
+    if primary_professor and primary_professor != "Staff":
+        sample_professors.append(primary_professor)
+
+    # Add additional professors from the pool
+    for prof in available_professors:
+        if prof not in sample_professors:
+            sample_professors.append(prof)
+        if len(sample_professors) >= num_sections:
+            break
+
+    # Add Staff/TBA as fallback
+    if len(sample_professors) < num_sections:
+        sample_professors.append("Staff")
 
     sections = []
     for i in range(min(num_sections, len(times))):
         section_num = f"{i+1:03d}"  # 001, 002, 003, etc.
 
-        # Rotate through professors
-        instructor = sample_professors[i % len(sample_professors)]
+        # Get professor for this section
+        instructor = sample_professors[i] if i < len(sample_professors) else "Staff"
 
         sections.append({
             "section": section_num,
             "instructor": instructor,
-            "crn": f"{12345 + i}",
+            "crn": f"{random.randint(10000, 99999)}",  # Varied CRNs
             "time": times[i],
             "days": times[i].split()[0],  # Extract days
             "location": locations[i % len(locations)]
         })
+
+    # Reset random seed to avoid affecting other random operations
+    random.seed()
 
     return sections
 
