@@ -12,6 +12,8 @@ from utils.prerequisites import (
     COURSE_DATABASE
 )
 from utils.catalog_loader import get_catalog_loader
+from utils.rmp_integration import get_rmp_api, enrich_courses_with_rmp, format_rmp_display
+from utils.export_utils import generate_pdf_schedule, generate_ics_calendar, generate_text_schedule
 
 # Cached PDF parsing to avoid re-parsing the same file multiple times
 @st.cache_data
@@ -615,14 +617,82 @@ with tab1:
                     ai_recs = st.session_state.ai_recommendations
 
                     if ai_recs.get("recommended_courses"):
-                        st.markdown("##### Recommended Courses")
-                        for course in ai_recs["recommended_courses"][:max_courses]:
+                        st.markdown("##### 📋 Recommended Courses")
+
+                        # Enrich courses with RMP data
+                        recommended_courses = ai_recs["recommended_courses"][:max_courses]
+                        try:
+                            school_name = info.get('school', 'Georgia State University')
+                            enriched_courses = enrich_courses_with_rmp(recommended_courses, school_name)
+                        except Exception as e:
+                            st.warning(f"⚠️ Rate My Professor data temporarily unavailable")
+                            enriched_courses = recommended_courses
+
+                        for course in enriched_courses:
                             with st.container():
-                                st.markdown(f"""
-                                **{course.get('course_code', 'N/A')}** - {course.get('course_name', 'N/A')}
-                                - Difficulty: {course.get('difficulty', 'N/A')}
-                                - Reason: {course.get('reason', 'Required for major')}
-                                """)
+                                # Course header
+                                col1, col2 = st.columns([3, 1])
+                                with col1:
+                                    st.markdown(f"""
+                                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                                padding: 1rem; border-radius: 10px; margin: 0.5rem 0;">
+                                        <h4 style="color: white; margin: 0;">
+                                            {course.get('course_code', 'N/A')} - {course.get('course_name', 'N/A')}
+                                        </h4>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+
+                                with col2:
+                                    difficulty = course.get('difficulty', 'Medium')
+                                    if difficulty.lower() == 'easy':
+                                        diff_color = "#28a745"
+                                        diff_emoji = "😊"
+                                    elif difficulty.lower() == 'hard':
+                                        diff_color = "#dc3545"
+                                        diff_emoji = "💪"
+                                    else:
+                                        diff_color = "#ffc107"
+                                        diff_emoji = "📚"
+
+                                    st.markdown(f"""
+                                    <div style="background: {diff_color}; color: white;
+                                                padding: 0.5rem; border-radius: 8px; text-align: center;">
+                                        <strong>{diff_emoji} {difficulty}</strong>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+
+                                # Course details
+                                col_a, col_b = st.columns(2)
+
+                                with col_a:
+                                    st.write(f"**📝 Reason:** {course.get('reason', 'Required for major')}")
+                                    credits = course.get('credits', 3)
+                                    st.write(f"**⭐ Credits:** {credits}")
+
+                                with col_b:
+                                    # RMP ratings
+                                    rmp_data = course.get('rmp_data')
+                                    if rmp_data:
+                                        rating = rmp_data.get('rating')
+                                        difficulty_rmp = rmp_data.get('difficulty')
+                                        num_ratings = rmp_data.get('num_ratings', 0)
+
+                                        if rating:
+                                            rating_emoji = "🌟" if rating >= 4.5 else "⭐" if rating >= 4.0 else "✨" if rating >= 3.5 else "💫"
+                                            st.write(f"**👨‍🏫 Professor Rating:** {rating_emoji} {rating}/5.0")
+
+                                        if difficulty_rmp:
+                                            diff_rmp_emoji = "😊" if difficulty_rmp <= 2.0 else "😐" if difficulty_rmp <= 3.0 else "😰" if difficulty_rmp <= 4.0 else "💀"
+                                            st.write(f"**🎯 Prof Difficulty:** {diff_rmp_emoji} {difficulty_rmp}/5.0")
+
+                                        if num_ratings:
+                                            st.caption(f"📊 Based on {num_ratings} reviews")
+                                    else:
+                                        professor = course.get('professor', 'TBA')
+                                        st.write(f"**👨‍🏫 Professor:** {professor}")
+                                        if professor.lower() not in ['tba', 'staff', 'tbd']:
+                                            st.caption("🔍 Looking up rating...")
+
                                 st.markdown("---")
 
                     # AI reasoning
@@ -677,16 +747,105 @@ with tab1:
 
                 # Export options
                 st.markdown("---")
-                st.markdown("#### 📥 Export")
+                st.markdown("""
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                            padding: 1.5rem; border-radius: 15px; margin: 1rem 0;">
+                    <h3 style="color: white; margin: 0; text-align: center;">📥 Export Your Schedule</h3>
+                    <p style="color: rgba(255,255,255,0.9); text-align: center; margin: 0.5rem 0;">
+                        Download your personalized course plan in multiple formats
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
 
                 if st.session_state.ai_recommendations:
-                    export_data = json.dumps(st.session_state.ai_recommendations, indent=2)
-                    st.download_button(
-                        "📄 Download Recommendations (JSON)",
-                        data=export_data,
-                        file_name="gsu_schedule_recommendations.json",
-                        mime="application/json"
-                    )
+                    export_courses = st.session_state.ai_recommendations.get("recommended_courses", [])[:max_courses]
+
+                    # Prepare student info for export
+                    student_export_info = {
+                        "name": info.get('student_name', 'Student'),
+                        "major": info.get('major', 'Computer Science'),
+                        "semester": datetime.now().strftime("%B %Y")
+                    }
+
+                    # Create three columns for export buttons
+                    exp_col1, exp_col2, exp_col3 = st.columns(3)
+
+                    with exp_col1:
+                        st.markdown("""
+                        <div style="text-align: center; padding: 1rem;">
+                            <h4 style="color: #0039A6; margin: 0;">📄 PDF</h4>
+                            <p style="font-size: 0.85em; color: #666;">Professional format</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                        try:
+                            pdf_buffer = generate_pdf_schedule(export_courses, student_export_info)
+                            st.download_button(
+                                label="⬇️ Download PDF",
+                                data=pdf_buffer,
+                                file_name=f"gsu_schedule_{datetime.now().strftime('%Y%m%d')}.pdf",
+                                mime="application/pdf",
+                                use_container_width=True
+                            )
+                        except Exception as e:
+                            st.error(f"PDF export unavailable: {str(e)[:50]}")
+
+                    with exp_col2:
+                        st.markdown("""
+                        <div style="text-align: center; padding: 1rem;">
+                            <h4 style="color: #0039A6; margin: 0;">📅 Calendar</h4>
+                            <p style="font-size: 0.85em; color: #666;">Import to Google</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                        try:
+                            ics_content = generate_ics_calendar(export_courses)
+                            st.download_button(
+                                label="⬇️ Download .ics",
+                                data=ics_content,
+                                file_name=f"gsu_schedule_{datetime.now().strftime('%Y%m%d')}.ics",
+                                mime="text/calendar",
+                                use_container_width=True
+                            )
+                        except Exception as e:
+                            st.error(f"Calendar export unavailable")
+
+                    with exp_col3:
+                        st.markdown("""
+                        <div style="text-align: center; padding: 1rem;">
+                            <h4 style="color: #0039A6; margin: 0;">📋 Text</h4>
+                            <p style="font-size: 0.85em; color: #666;">Copy & paste</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                        try:
+                            text_schedule = generate_text_schedule(export_courses, student_export_info)
+
+                            # Copy to clipboard using text area
+                            if st.button("📋 Copy to Clipboard", use_container_width=True):
+                                st.code(text_schedule, language=None)
+                                st.success("✅ Schedule displayed! Copy the text above.")
+
+                            # Also offer as download
+                            st.download_button(
+                                label="⬇️ Download .txt",
+                                data=text_schedule,
+                                file_name=f"gsu_schedule_{datetime.now().strftime('%Y%m%d')}.txt",
+                                mime="text/plain",
+                                use_container_width=True
+                            )
+                        except Exception as e:
+                            st.error(f"Text export unavailable")
+
+                    # JSON export (keep for developers/debugging)
+                    with st.expander("🔧 Advanced: JSON Export"):
+                        export_data = json.dumps(st.session_state.ai_recommendations, indent=2)
+                        st.download_button(
+                            "Download Full Data (JSON)",
+                            data=export_data,
+                            file_name=f"gsu_schedule_data_{datetime.now().strftime('%Y%m%d')}.json",
+                            mime="application/json"
+                        )
 
         elif submit_button and not st.session_state.eval_data:
             st.warning("⚠️ Please upload your academic evaluation first.")
@@ -1150,6 +1309,7 @@ with tab4:
         • Uses GPT to analyze your situation<br>
         • Matches courses to your goals<br>
         • Balances difficulty across semester<br>
+        • Shows Rate My Professor ratings<br>
         • Optimizes path to graduation
         </div>
         """, unsafe_allow_html=True)
@@ -1212,6 +1372,8 @@ with tab5:
         <li>Parses DegreeWorks evaluations</li>
         <li>Identifies eligible courses</li>
         <li>AI course recommendations</li>
+        <li>Rate My Professor ratings</li>
+        <li>PDF/Calendar exports</li>
         <li>Tracks graduation progress</li>
         </ul>
         </div>
@@ -1260,6 +1422,7 @@ with tab5:
     Thanks to:<br>
     • Georgia State University for the course data<br>
     • OpenAI for AI-powered recommendations<br>
+    • Rate My Professor for professor ratings<br>
     • Streamlit for the web framework<br>
     • The GSU community for feedback and support
     </div>
