@@ -8,6 +8,7 @@ import json
 import os
 from typing import Dict, List, Optional, Tuple
 from pathlib import Path
+from utils.prerequisite_resolver import get_prerequisite_resolver
 
 class CatalogLoader:
     """Loads and manages course catalogs for different majors and schools"""
@@ -324,6 +325,138 @@ class CatalogLoader:
             "estimated_completed_credits": completed_credits,
             "completion_percentage": min(100, int((completed_credits / total_credits_required) * 100))
         }
+
+    def check_prerequisites_with_grades(
+        self,
+        school: str = None,
+        major: str = None,
+        course_code: str = None,
+        completed_courses: List[Dict] = None,
+        in_progress_courses: List[str] = None
+    ) -> Dict:
+        """
+        Enhanced prerequisite checking using the prerequisite resolver.
+        Evaluates eligibility based on actual prerequisite text and student grades.
+
+        Args:
+            school: School/institution
+            major: Student's major
+            course_code: Course to check eligibility for
+            completed_courses: List of dicts with 'course_code' and 'grade' keys
+            in_progress_courses: Optional list of currently enrolled course codes
+
+        Returns:
+            Dict with detailed eligibility information:
+                - eligible (bool): Whether student can take the course
+                - met_requirements (list): Prerequisites that are satisfied
+                - missing_requirements (list): Prerequisites not satisfied
+                - reason (str): Human-readable explanation
+                - prerequisites_raw (str): Raw prerequisite text from catalog
+        """
+        if completed_courses is None:
+            completed_courses = []
+        if in_progress_courses is None:
+            in_progress_courses = []
+
+        course_code = course_code.upper().strip() if course_code else ""
+
+        # Get course info from catalog
+        courses = self.get_all_courses_for_major(school, major)
+        if course_code not in courses:
+            return {
+                "eligible": False,
+                "met_requirements": [],
+                "missing_requirements": [],
+                "reason": "Course not found in catalog",
+                "prerequisites_raw": ""
+            }
+
+        course_info = courses[course_code]
+        prereq_text = course_info.get("prerequisites_raw", "")
+
+        # If no raw prerequisite text, fall back to simple check
+        if not prereq_text:
+            simple_result = self.check_prerequisites_met(school, major, course_code,
+                                              [c['course_code'] for c in completed_courses])
+            # Convert to new format
+            return {
+                "eligible": simple_result.get("can_take", False),
+                "can_take": simple_result.get("can_take", False),
+                "met_requirements": simple_result.get("met", []),
+                "missing_requirements": simple_result.get("missing", []),
+                "reason": "All prerequisites met" if simple_result.get("can_take") else f"Missing: {', '.join(simple_result.get('missing', []))}",
+                "prerequisites_raw": ""
+            }
+
+        # Use prerequisite resolver for advanced evaluation
+        resolver = get_prerequisite_resolver()
+        result = resolver.evaluate_eligibility(prereq_text, completed_courses, in_progress_courses)
+
+        # Add raw text to result
+        result["prerequisites_raw"] = prereq_text
+        result["can_take"] = result["eligible"]  # Alias for backwards compatibility
+
+        return result
+
+    def get_eligible_courses_with_grades(
+        self,
+        school: str = None,
+        major: str = None,
+        completed_courses: List[Dict] = None,
+        in_progress_courses: List[str] = None,
+        limit: int = None
+    ) -> List[Dict]:
+        """
+        Get all courses a student is eligible to take, considering grades.
+
+        Args:
+            school: School/institution
+            major: Student's major
+            completed_courses: List of dicts with 'course_code' and 'grade'
+            in_progress_courses: Optional list of currently enrolled courses
+            limit: Optional max number of courses to return
+
+        Returns:
+            List of eligible courses with details
+        """
+        if completed_courses is None:
+            completed_courses = []
+        if in_progress_courses is None:
+            in_progress_courses = []
+
+        completed_codes = {c['course_code'].upper().strip() for c in completed_courses}
+        in_progress_codes = {c.upper().strip() for c in in_progress_courses}
+        all_taken = completed_codes | in_progress_codes
+
+        courses = self.get_all_courses_for_major(school, major)
+        eligible = []
+
+        for course_code, course_info in courses.items():
+            # Skip if already taken or in progress
+            if course_code in all_taken:
+                continue
+
+            # Check eligibility
+            result = self.check_prerequisites_with_grades(
+                school, major, course_code, completed_courses, in_progress_courses
+            )
+
+            if result["eligible"]:
+                eligible.append({
+                    "course_code": course_code,
+                    "course_name": course_info.get("name", ""),
+                    "credits": course_info.get("credits", 3),
+                    "description": course_info.get("description", ""),
+                    "prerequisites_met": result["met_requirements"],
+                    "eligibility_reason": result["reason"]
+                })
+
+        # Sort by course code
+        eligible.sort(key=lambda x: x['course_code'])
+
+        if limit:
+            return eligible[:limit]
+        return eligible
 
 
 # Global catalog loader instance

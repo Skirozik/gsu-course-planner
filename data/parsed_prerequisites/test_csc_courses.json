@@ -1,0 +1,22 @@
+[
+  {
+    "course_code": "CSC 1301",
+    "title": "Principles of Computer Science I",
+    "credits": 4,
+    "prerequisites_raw": "",
+    "corequisites_raw": "",
+    "restrictions_raw": "Only for majors in Computer Science, Mathematics, Physics or Engineering, or minor in Computer Science",
+    "description": "Requirements: Only for majors in Computer Science, Mathematics, Physics or Engineering, or minor in Computer Science. Description This course is an introduction to the fundamental principles of programming and data analysis in computer science. It emphasizes structured, top-down development and testing of computer programs. The course includes an overview of computers and programming; problem solving and algorithm development; basic data types; arithmetic and logic operators; selection structure",
+    "coid": "88199"
+  },
+  {
+    "course_code": "CSC 1302",
+    "title": "Principles of Computer Science II",
+    "credits": 4,
+    "prerequisites_raw": "CSC 1301 with a C or higher",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 1301 with a C or higher. Description This course covers the advanced principles of computer programming and problem-solving. The students will learn essential programming concepts on object-oriented programming and data analysis methodologies. Topics to be covered include classes and objects, inheritance and encapsulation, exception handling, debugging, files and I/O handling and introduction to elementary graphics using object oriented concepts. Course includes lab portion. B",
+    "coid": "88200"
+  }
+]

@@ -1,0 +1,522 @@
+[
+  {
+    "course_code": "CSC 1301",
+    "title": "Principles of Computer Science I",
+    "credits": 4,
+    "prerequisites_raw": "",
+    "corequisites_raw": "",
+    "restrictions_raw": "Only for majors in Computer Science, Mathematics, Physics or Engineering, or minor in Computer Science",
+    "description": "Requirements: Only for majors in Computer Science, Mathematics, Physics or Engineering, or minor in Computer Science. Description This course is an introduction to the fundamental principles of programming and data analysis in computer science. It emphasizes structured, top-down development and testing of computer programs. The course includes an overview of computers and programming; problem solving and algorithm development; basic data types; arithmetic and logic operators; selection structure",
+    "coid": "88199"
+  },
+  {
+    "course_code": "CSC 1302",
+    "title": "Principles of Computer Science II",
+    "credits": 4,
+    "prerequisites_raw": "CSC 1301 with a C or higher",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 1301 with a C or higher. Description This course covers the advanced principles of computer programming and problem-solving. The students will learn essential programming concepts on object-oriented programming and data analysis methodologies. Topics to be covered include classes and objects, inheritance and encapsulation, exception handling, debugging, files and I/O handling and introduction to elementary graphics using object oriented concepts. Course includes lab portion. B",
+    "coid": "88200"
+  },
+  {
+    "course_code": "CSC 2510",
+    "title": "Theoretical Foundations of Computer Science",
+    "credits": 3,
+    "prerequisites_raw": "Math 1113 or Math 1220 with a C or higher",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: Math 1113 or Math 1220 with a C or higher. Description Topics include: propositional and predicate logic with applications to logic programming, database querying, and program verification; induction and its application in proving correctness and termination of programs; recurrence relations, combinatorics, and graph theory with applications to analysis of algorithms; sets, relations, and functions and their applications in databases, functional programming, and automata. Back to ",
+    "coid": "88204"
+  },
+  {
+    "course_code": "CSC 2920",
+    "title": "Ethical and Social Issues in Computing",
+    "credits": 3,
+    "prerequisites_raw": "CSC 1301 and CSC 1302 with a C or higher or permission of the department",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 1301 and CSC 1302 with a C or higher or permission of the department. Description This course is dedicated to the study of social, ethical, and legal effects of computing on society and its users. Ethical concepts, professional codes of ethics, and the influence of computing on individuals, organizations, and the global economy will be addressed. Students will utilize critical thinking and problem solving skills to analyze and debate case studies on topics some of which includ",
+    "coid": "88205"
+  },
+  {
+    "course_code": "CSC 3210",
+    "title": "Computer Organization and Programming",
+    "credits": 4,
+    "prerequisites_raw": "CSC 1302, and CSC 2510 or MATH 2420 with a C or higher. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 1302, and CSC 2510 or MATH 2420 with a C or higher. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description This course introduces the principles of computer architecture and assembly and machine language. Topics include principles of computer architecture, binary and hexadecimal arithmetic, signed and unsigned arithmetic, memory organization, addressing modes, procedure calls, the stack frame, floating point unit an",
+    "coid": "88206"
+  },
+  {
+    "course_code": "CSC 4110",
+    "title": "Introduction to Embedded Systems Laboratory",
+    "credits": 4,
+    "prerequisites_raw": "CSC 3320 with grade of C or higher. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 3320 with grade of C or higher. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. DescriptionSame as PHYS 4110. Topics taken from: review of basic logic functions; automatic systems; microprocessor- based systems and applications; embedded system software survey; microprocessor-based applications; digital communications; and embedded systems programming. Four lecture hours per week. Back to Top | Print-Friendly Page (opens",
+    "coid": "88207"
+  },
+  {
+    "course_code": "CSC 4120",
+    "title": "Introduction to Robotics",
+    "credits": 4,
+    "prerequisites_raw": "CSC 3210 with a C or higher. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 3210 with a C or higher. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description The course focuses on programming robots. We will use robotic kits for the hardware, and program them using state-of-the-art languages, such as NQC. Back to Top | Print-Friendly Page (opens a new window) Facebook this Page (opens a new window) Tweet this Page (opens a new window) All catalogs \u00a9 2026 Georgia State University. Powered by M",
+    "coid": "88208"
+  },
+  {
+    "course_code": "CSC 4210",
+    "title": "Computer Architecture",
+    "credits": 4,
+    "prerequisites_raw": "CSC 3210 with grade of C or higher. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 3210 with grade of C or higher. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description Logic design, combinatorial and sequential circuits, input-output devices, memory, processors, controllers, parallel architectures, bit-slicing, reduced instruction sets. Back to Top | Print-Friendly Page (opens a new window) Facebook this Page (opens a new window) Tweet this Page (opens a new window) All catalogs \u00a9 2026 Georgia S",
+    "coid": "88209"
+  },
+  {
+    "course_code": "CSC 4220",
+    "title": "Computer Networks",
+    "credits": 4,
+    "prerequisites_raw": "CSC 3320 and either MATH 3020 or MATH 3030 with a C or higher. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 3320 and either MATH 3020 or MATH 3030 with a C or higher. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description Introduction to computer networks; details of layered network protocols with emphasis on functionality and analysis. Principles of relevant state-of-the-art network standards. Back to Top | Print-Friendly Page (opens a new window) Facebook this Page (opens a new window) Tweet this Page (opens a new windo",
+    "coid": "88210"
+  },
+  {
+    "course_code": "CSC 4221",
+    "title": "Mobile Computing and Wireless Network Security",
+    "credits": 4,
+    "prerequisites_raw": "CSC 2720 and CSC 3320 with a C or higher. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 2720 and CSC 3320 with a C or higher. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description Introduction to wireless communication networks and mobile computing. Topics include: wireless communications technology; communication protocols in wireless networks; representative network types such as cellular wireless networks, wireless LANs, wireless ad hoc networks and wireless sensor networks, and mobile communicatio",
+    "coid": "88211"
+  },
+  {
+    "course_code": "CSC 4223",
+    "title": "Privacy",
+    "credits": 4,
+    "prerequisites_raw": "CSC 2720 and either MATH 3020 or MATH 3030 with a C or higher. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 2720 and either MATH 3020 or MATH 3030 with a C or higher. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description This course will study privacy in a few settings where rigorous definitions and enforcement mechanisms are being developed. This includes statistical disclosure limitation, semantics and logical specification of privacy policies that constrain information flow and use, principled audit and accountability",
+    "coid": "88212"
+  },
+  {
+    "course_code": "CSC 4224",
+    "title": "Ethical Hacking",
+    "credits": 4,
+    "prerequisites_raw": "CSC 2720 (Data Structures) and CSC 3320 (System Level Programming). Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 2720 (Data Structures) and CSC 3320 (System Level Programming). Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description Introduction to the methods and techniques used by computer hackers for malicious activity and by penetration testers for defensive measures. Understanding of the techniques used by intruders will lead to the design of countermeasures for secure computer systems. Students will implement hands-on exp",
+    "coid": "88213"
+  },
+  {
+    "course_code": "CSC 4226",
+    "title": "Secure Software Engineering",
+    "credits": 4,
+    "prerequisites_raw": "CSC 2720 and CSC 3320 with a C or better. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 2720 and CSC 3320 with a C or better. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description This course is a study of the foundation of software security. Students will learn the characteristics of secure software, the role of security in the development lifecycle, designing secure software, best security programming practices, security for web applications, static analysis techniques, and software security testing",
+    "coid": "88215"
+  },
+  {
+    "course_code": "CSC 4250",
+    "title": "Malware Analysis and Defense",
+    "credits": 4,
+    "prerequisites_raw": "CSC 3210 Computer Organization and Programming, CSC 2720 Data Structure. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 3210 Computer Organization and Programming, CSC 2720 Data Structure. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description This course will introduce students to the fundamentals of malware analysis and defense techniques. Using hands-on-experience students will attain an understanding of identifying the functionalities and behaviors of malicious software. Students will use a disassembler to decompose, execute, and",
+    "coid": "88216"
+  },
+  {
+    "course_code": "CSC 4251",
+    "title": "Computer Forensics",
+    "credits": 4,
+    "prerequisites_raw": "CSC 2720 (Data Structures) and CSC 3320 (System Level Programming). Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 2720 (Data Structures) and CSC 3320 (System Level Programming). Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description This course teaches how to obtain and analyze digital information for possible use as evidence in civil, criminal or administrative cases. The course covers the recovery and analysis of digital evidence, addressing legal and technical issues. Topics include applications of hardware and software to c",
+    "coid": "88217"
+  },
+  {
+    "course_code": "CSC 4260",
+    "title": "Digital Image Processing",
+    "credits": 4,
+    "prerequisites_raw": "CSC 2720 or DSCI 2720 with a C or higher. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 2720 or DSCI 2720 with a C or higher. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description Fundamentals of image processing, including image digitization, description, enhancement, segmentation, image transforms, filtering, restoration, coding, and retrieval. Concepts are illustrated by laboratory sessions in which these techniques are applied to practical situations, including examples from industrial and biomedi",
+    "coid": "88218"
+  },
+  {
+    "course_code": "CSC 4310",
+    "title": "Parallel and Distributed Computing",
+    "credits": 4,
+    "prerequisites_raw": "CSC 3210 and CSC 3320 with grades of C or higher. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 3210 and CSC 3320 with grades of C or higher. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description Introduction to various parallel and distributed computing paradigms, algorithms, architectures, programming environments, and tools. Hands-on programming on both shared-memory and message-passing parallel architectures. Back to Top | Print-Friendly Page (opens a new window) Facebook this Page (opens a new window) Tw",
+    "coid": "88220"
+  },
+  {
+    "course_code": "CSC 4311",
+    "title": "Cloud Computing",
+    "credits": 4,
+    "prerequisites_raw": "CSC 2720 or DSCI 2720 with C or higher. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 2720 or DSCI 2720 with C or higher. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description This course covers topics related to cloud computing including cloud computing infrastructure such as Infrastructure as a Service (IaaS), Platform as a Service (PaaS), and Software as a Service (SaaS). Popular cloud services such as AWS, Microsoft Azure and Google Cloud will be introduced. Container technologies such as Docker",
+    "coid": "88221"
+  },
+  {
+    "course_code": "CSC 4320",
+    "title": "Operating Systems",
+    "credits": 4,
+    "prerequisites_raw": "CSC 3320 with grade of C or higher. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 3320 with grade of C or higher. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description Introduction to operating systems concepts. Topics may include multiprogramming, resources allocation and management, and their implementation. Back to Top | Print-Friendly Page (opens a new window) Facebook this Page (opens a new window) Tweet this Page (opens a new window) All catalogs \u00a9 2026 Georgia State University. Powered by",
+    "coid": "88222"
+  },
+  {
+    "course_code": "CSC 4330",
+    "title": "Programming Language Concepts",
+    "credits": 4,
+    "prerequisites_raw": "CSC 2720, CSC 3210, and CSC 3320 with a C or higher. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 2720, CSC 3210, and CSC 3320 with a C or higher. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description Fundamental programming language concepts, including syntax versus semantics, binding time, scopes, and storage management. Back to Top | Print-Friendly Page (opens a new window) Facebook this Page (opens a new window) Tweet this Page (opens a new window) All catalogs \u00a9 2026 Georgia State University. Powered by Mo",
+    "coid": "88223"
+  },
+  {
+    "course_code": "CSC 4340",
+    "title": "Compilers",
+    "credits": 4,
+    "prerequisites_raw": "CSC 2720 and CSC 3210 with grades of \u201cC\u201d or higher. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 2720 and CSC 3210 with grades of \u201cC\u201d or higher. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description Survey of topics related to compiler design, including parsing, table processing, code generation, and optimization. Back to Top | Print-Friendly Page (opens a new window) Facebook this Page (opens a new window) Tweet this Page (opens a new window) All catalogs \u00a9 2026 Georgia State University. Powered by Modern Cam",
+    "coid": "88224"
+  },
+  {
+    "course_code": "CSC 4350",
+    "title": "Software Engineering - CTW",
+    "credits": 4,
+    "prerequisites_raw": "CSc 2720, CSc 3210, and CSc 3320 with a C or higher. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSc 2720, CSc 3210, and CSc 3320 with a C or higher. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description This course focuses on techniques used in large scale scientific or technical software development, including requirements analysis, specification, systems design, implementation, testing, validation, verification, and maintenance. Serves as the Critical Thinking Through Writing (CTW) course, as well as the capsto",
+    "coid": "88225"
+  },
+  {
+    "course_code": "CSC 4360",
+    "title": "Mobile Application Development",
+    "credits": 4,
+    "prerequisites_raw": "CSC 2720 with a grade of C or higher. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 2720 with a grade of C or higher. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. DescriptionCrosslisted with CSC 6360. This course will cover the technologies, tools, frameworks and languages that are most commonly used in developing mobile applications for multiple mobile platforms. Topics include mobile application design, user interfaces, mobile application demographic and platform delivery, mobile networking, hostin",
+    "coid": "88226"
+  },
+  {
+    "course_code": "CSC 4370",
+    "title": "Web Programming",
+    "credits": 4,
+    "prerequisites_raw": "CSC 3320 with grade of C or higher. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 3320 with grade of C or higher. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description The course introduces the student to programming techniques required to develop Web applications. Topics include: HTML forms, JavaScript, Servlets and Java Server Pages, PHP and MySQL, Web access to Oracle databases, and XML. Back to Top | Print-Friendly Page (opens a new window) Facebook this Page (opens a new window) Tweet this ",
+    "coid": "88227"
+  },
+  {
+    "course_code": "CSC 4510",
+    "title": "Automata",
+    "credits": 4,
+    "prerequisites_raw": "CSC 2720 with a C or higher. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 2720 with a C or higher. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description Theory of computing devices and the languages they recognize. Deterministic and non-deterministic finite automata, context-free grammars, pushdown automata, Turing machines and undecidability. Back to Top | Print-Friendly Page (opens a new window) Facebook this Page (opens a new window) Tweet this Page (opens a new window) All catalogs \u00a9",
+    "coid": "88229"
+  },
+  {
+    "course_code": "CSC 4520",
+    "title": "Design and Analysis of Algorithms",
+    "credits": 4,
+    "prerequisites_raw": "(CSC 2720 or DSCI 2720) and either MATH 3020 or MATH 3030 with a C or higher. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: (CSC 2720 or DSCI 2720) and either MATH 3020 or MATH 3030 with a C or higher. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description Techniques for designing efficient algorithms; analysis of algorithms; lower bound arguments; algorithms for sorting, selection, graphs, and string matching. Back to Top | Print-Friendly Page (opens a new window) Facebook this Page (opens a new window) Tweet this Page (opens a new window) ",
+    "coid": "88230"
+  },
+  {
+    "course_code": "CSC 4610",
+    "title": "Numerical Analysis I",
+    "credits": 3,
+    "prerequisites_raw": "MATH 2215 with grade of C or higher and the ability to program in a high-level language. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: MATH 2215 with grade of C or higher and the ability to program in a high-level language. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. DescriptionSame as MATH 4610. Nature of error; iteration; techniques for nonlinear systems; zeros of functions; interpolation; numerical differentiation; Newton-Cotes formulae for definite integrals; computer implementation of algorithms. Back to Top | Print-Friendly Page (opens a new windo",
+    "coid": "88231"
+  },
+  {
+    "course_code": "CSC 4620",
+    "title": "Numerical Analysis II",
+    "credits": 3,
+    "prerequisites_raw": "Either MATH 3030 or both MATH 2641 and MATH 2215 with grades of C or higher, and the ability to program in a high level language. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: Either MATH 3030 or both MATH 2641 and MATH 2215 with grades of C or higher, and the ability to program in a high level language. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. DescriptionSame as MATH 4620. Gaussian Elimination for linear systems; least squares; Taylor, predictor-corrector and Runge- Kutta methods for solving ordinary differential equations; boundary value problems; partial differential equations. Back to T",
+    "coid": "88232"
+  },
+  {
+    "course_code": "CSC 4630",
+    "title": "Matlab",
+    "credits": 4,
+    "prerequisites_raw": "MATH 3030 with a grade of C or higher. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "No previous programming experience is needed",
+    "description": "Prerequisites: MATH 3030 with a grade of C or higher. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course.",
+    "coid": "88233"
+  },
+  {
+    "course_code": "CSC 4650",
+    "title": "Introduction to Bioinformatics",
+    "credits": 4,
+    "prerequisites_raw": "CSC 2720, BIOL 1103K, [or BIOL 1103 and BIOL 1103L] and CHEM 1211K [or CHEM 1211 and CHEM 1211L] with grades of \u201cC\u201d or higher.Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 2720, BIOL 1103K, [or BIOL 1103 and BIOL 1103L] and CHEM 1211K [or CHEM 1211 and CHEM 1211L] with grades of \u201cC\u201d or higher.Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description The explosion in biological knowledge due to various genome projects and other high-throughput techniques has created entirely new fields and industries, and a need for trained computational biologists who are familiar with Biology, Statistic",
+    "coid": "88234"
+  },
+  {
+    "course_code": "CSC 4710",
+    "title": "Database Systems",
+    "credits": 4,
+    "prerequisites_raw": "CS 2720 with grade of \u201cC\u201d or higher. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CS 2720 with grade of \u201cC\u201d or higher. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description An introduction to the fundamental concepts and principles that underlie the relational model of data. Topics include formal query languages; SQL; query optimization; relational database design theory; physical database design, integrity, security, and concurrency control. Back to Top | Print-Friendly Page (opens a new window) Fa",
+    "coid": "88235"
+  },
+  {
+    "course_code": "CSC 4720",
+    "title": "Human-Computer Interaction",
+    "credits": 4,
+    "prerequisites_raw": "CSC 3320 with grade of C or higher. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 3320 with grade of C or higher. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description Techniques and methodologies for development of user interfaces in software systems; topics include interaction styles, interaction devices, user documentation, and interface assessment. Back to Top | Print-Friendly Page (opens a new window) Facebook this Page (opens a new window) Tweet this Page (opens a new window) All catalogs ",
+    "coid": "88236"
+  },
+  {
+    "course_code": "CSC 4730",
+    "title": "Data Visualization",
+    "credits": 4,
+    "prerequisites_raw": "CSC 3320 with a C or higher. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 3320 with a C or higher. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. DescriptionSame as CMIS 4200. Data visualization or displaying data in visual forms and is closely related to data analytics. In this class, students will study the theories of data visualization, design principles, and data visualization techniques. Students will learn the various tools for creating interactive data visualizations, such as charts, ",
+    "coid": "88237"
+  },
+  {
+    "course_code": "CSC 4740",
+    "title": "Data Mining",
+    "credits": 4,
+    "prerequisites_raw": "CSC 2720 with grade of C or higher. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 2720 with grade of C or higher. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description Introduction to basic data mining techniques (such as association rules mining, cluster analysis, and classification methods) and their applications (such as Web data mining, biomedical data mining and security). Back to Top | Print-Friendly Page (opens a new window) Facebook this Page (opens a new window) Tweet this Page (opens a",
+    "coid": "88238"
+  },
+  {
+    "course_code": "CSC 4750",
+    "title": "Semantic Web",
+    "credits": 4,
+    "prerequisites_raw": "CSC 2720 or DSCI 2720 with a C or higher. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 2720 or DSCI 2720 with a C or higher. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description In-depth overview of the Semantic Web and how it can be applied. Major topics include core technical components and language constructs for the Semantic Web, linked data concepts/projects and RDF triple stores, and real world semantic Web applications. Back to Top | Print-Friendly Page (opens a new window) Facebook this Page",
+    "coid": "88239"
+  },
+  {
+    "course_code": "CSC 4760",
+    "title": "Big Data Programming",
+    "credits": 4,
+    "prerequisites_raw": "CSC 2720 with grade of C or higher. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 2720 with grade of C or higher. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. DescriptionCrosslisted with CSC 6760. This course will cover the technologies, tools, frameworks and languages that are most commonly used in Big Data Programming. Focus will be on algorithms for analyzing and mining massive datasets, graphs and social network data. Topics include the storage, management, processing and analysis of massive da",
+    "coid": "88240"
+  },
+  {
+    "course_code": "CSC 4780",
+    "title": "Fundamentals of Data Science",
+    "credits": 4,
+    "prerequisites_raw": "CSC 2720 with a C or better. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 2720 with a C or better. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description Introduction to the fundamental concepts of predictive data science for tabular data with qualitative and quantitative scales. Topics include: data exploration, pre-processing and visualization; analytics base table (ABT) generation; basic supervised learning algorithms (i.e. information-based learning, similarity-based learning, and err",
+    "coid": "88241"
+  },
+  {
+    "course_code": "CSC 4810",
+    "title": "Artificial Intelligence",
+    "credits": 4,
+    "prerequisites_raw": "CSC 2720 or DSCI 2720 with a C or higher. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 2720 or DSCI 2720 with a C or higher. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description An overview of techniques and methodologies in the field of artificial intelligence. Topics may include search strategies, problem solving, natural language processing, logic and deduction, memory models, learning, expert systems, knowledge representation, and robotics. Back to Top | Print-Friendly Page (opens a new window) ",
+    "coid": "88242"
+  },
+  {
+    "course_code": "CSC 4820",
+    "title": "Interactive Computer Graphics",
+    "credits": 4,
+    "prerequisites_raw": "CSC 3320 with grade of \u201cC\u201d or higher. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 3320 with grade of \u201cC\u201d or higher. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. DescriptionSame as CMIS 3150. This course will introduce students to 3D computer graphics and game programming. Students will learn how to develop 3D games and interactive computer graphics applications (such as virtual reality) using game engines. The topics include rendering, lighting, camera, sound, character control, animation, and phys",
+    "coid": "88243"
+  },
+  {
+    "course_code": "CSC 4821",
+    "title": "Fundamentals of Game Design",
+    "credits": 4,
+    "prerequisites_raw": "CSC 3320 with grade of C or higher. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 3320 with grade of C or higher. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description Covers major aspects of game design such as challenges, gameplay, actions, core mechanics, worlds, characters, game balancing, user interfaces, and game genres. Back to Top | Print-Friendly Page (opens a new window) Facebook this Page (opens a new window) Tweet this Page (opens a new window) All catalogs \u00a9 2026 Georgia State Unive",
+    "coid": "88244"
+  },
+  {
+    "course_code": "CSC 4840",
+    "title": "Advanced Computer Graphics Programming",
+    "credits": 4,
+    "prerequisites_raw": "CSC 3320 with a grade of C or higher. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 3320 with a grade of C or higher. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. DescriptionSame as CMIS 4120. Students will learn advanced 3D graphics and game programming. The topics will include rendering, lighting, camera, animation, user interaction, physics simulation, game AI, and GPU. Back to Top | Print-Friendly Page (opens a new window) Facebook this Page (opens a new window) Tweet this Page (opens a new windo",
+    "coid": "88245"
+  },
+  {
+    "course_code": "CSC 4841",
+    "title": "Computer Animation",
+    "credits": 4,
+    "prerequisites_raw": "CSC 3320 with a grade of C or higher. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 3320 with a grade of C or higher. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description The basics of three-dimensional computer animation including 3D modeling, lighting, texture mapping, key framing, character animation, rigid and soft body dynamics, particles, cloth, hair, fluid, etc. Back to Top | Print-Friendly Page (opens a new window) Facebook this Page (opens a new window) Tweet this Page (opens a new windo",
+    "coid": "88246"
+  },
+  {
+    "course_code": "CSC 4850",
+    "title": "Machine Learning",
+    "credits": 4,
+    "prerequisites_raw": "CSC 4520 with a grade of C or better. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 4520 with a grade of C or better. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description This course is intended to provide a general introduction to machine learning. This course will cover the fundamental concepts and principles of supervised learning, unsupervised learning, semi-supervised learning and reinforcement learning. Students will understand the basic knowledge of machine learning, be familiar with class",
+    "coid": "88247"
+  },
+  {
+    "course_code": "CSC 4851",
+    "title": "Introduction to Deep Learning",
+    "credits": 4,
+    "prerequisites_raw": "CSC 2720 (or DSCI 2720) and MATH 2641 with a C or higher. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: CSC 2720 (or DSCI 2720) and MATH 2641 with a C or higher. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description This course introduces the basic concepts and algorithms of deep neural networks and its applications to computer vision and natural language processing. Depending on the course progress, selected topics such as unsupervised learning and model compression will be covered. The class emphasizes the understandin",
+    "coid": "88248"
+  },
+  {
+    "course_code": "CSC 4870",
+    "title": "Honors Thesis I",
+    "credits": 6,
+    "prerequisites_raw": "Good standing with the Honors College and consent of instructor. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: Good standing with the Honors College and consent of instructor. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description Readings or research preparatory to honors thesis or project. Signature Experience course. Back to Top | Print-Friendly Page (opens a new window) Facebook this Page (opens a new window) Tweet this Page (opens a new window) All catalogs \u00a9 2026 Georgia State University. Powered by Modern Campus Catalog\u2122.",
+    "coid": "88249"
+  },
+  {
+    "course_code": "CSC 4880",
+    "title": "Honors Thesis II",
+    "credits": 6,
+    "prerequisites_raw": "Good standing with the Honors College and consent of instructor.Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: Good standing with the Honors College and consent of instructor.Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description Writing or production of honors thesis or project. Signature Experience course. Back to Top | Print-Friendly Page (opens a new window) Facebook this Page (opens a new window) Tweet this Page (opens a new window) All catalogs \u00a9 2026 Georgia State University. Powered by Modern Campus Catalog\u2122.",
+    "coid": "88250"
+  },
+  {
+    "course_code": "CSC 4940",
+    "title": "Computer Science Internship",
+    "credits": 2,
+    "prerequisites_raw": "Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description This course will require students to document and present the project they worked on during their internship. This course may include a Signature Experience component. Students are able to register for the course at most 2 times for a maximum total of 4 credit hours to count towards their degree (excluding Area G). Back to Top | Print-Friendly Page (opens a new wind",
+    "coid": "88251"
+  },
+  {
+    "course_code": "CSC 4980",
+    "title": "Topics in Computer Science",
+    "credits": 4,
+    "prerequisites_raw": "Consent of Instructor. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: Consent of Instructor. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description Selected topics in Computer Science will be covered. Topics include the latest advances in computing. Back to Top | Print-Friendly Page (opens a new window) Facebook this Page (opens a new window) Tweet this Page (opens a new window) All catalogs \u00a9 2026 Georgia State University. Powered by Modern Campus Catalog\u2122.",
+    "coid": "88252"
+  },
+  {
+    "course_code": "CSC 4982",
+    "title": "Undergraduate Research in Computer Science",
+    "credits": 4,
+    "prerequisites_raw": "At least 12 upper-division hours in computer science. Authorization required. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: At least 12 upper-division hours in computer science. Authorization required. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description Independent investigation of topics of common interest to student and instructor. This course may include a Signature Experience component. Back to Top | Print-Friendly Page (opens a new window) Facebook this Page (opens a new window) Tweet this Page (opens a new window) All catalogs \u00a9 202",
+    "coid": "88253"
+  },
+  {
+    "course_code": "CSC 4995",
+    "title": "Directed Readings BIS-CTW",
+    "credits": 4,
+    "prerequisites_raw": "Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description Directed Readings designed for Bachelor of Interdisciplinary Studies students. This course may satisfy the junior and/or senior-level Critical Thinking Through Writing requirements. Back to Top | Print-Friendly Page (opens a new window) Facebook this Page (opens a new window) Tweet this Page (opens a new window) All catalogs \u00a9 2026 Georgia State University. Powered ",
+    "coid": "88254"
+  },
+  {
+    "course_code": "CSC 4998",
+    "title": "Selected Topics",
+    "credits": 4,
+    "prerequisites_raw": "Consent of instructor. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: Consent of instructor. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description May be repeated if topics are different. No more than six credit hours may be applied toward the major. Back to Top | Print-Friendly Page (opens a new window) Facebook this Page (opens a new window) Tweet this Page (opens a new window) All catalogs \u00a9 2026 Georgia State University. Powered by Modern Campus Catalog\u2122.",
+    "coid": "88255"
+  },
+  {
+    "course_code": "CSC 4999",
+    "title": "Directed Readings",
+    "credits": 4,
+    "prerequisites_raw": "GPA of 3.0 or higher and consent of instructor. Students must meet the Computer Science Major Eligibility",
+    "corequisites_raw": "",
+    "restrictions_raw": "",
+    "description": "Prerequisites: GPA of 3.0 or higher and consent of instructor. Students must meet the Computer Science Major Eligibility Requirement in order to enroll in this course. Description Directed study with a faculty member. Back to Top | Print-Friendly Page (opens a new window) Facebook this Page (opens a new window) Tweet this Page (opens a new window) All catalogs \u00a9 2026 Georgia State University. Powered by Modern Campus Catalog\u2122.",
+    "coid": "88256"
+  }
+]

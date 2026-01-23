@@ -1,0 +1,58 @@
+[
+  {
+    "major_name": "Computer Information Systems",
+    "degree_type": "B.B.A.",
+    "college": "J. Mack Robinson College of Business",
+    "catalog_year": "2025-2026",
+    "total_hours": 120,
+    "required_courses": {
+      "Required Major Courses": [],
+      "All undergraduate CIS majors must complete": [
+        "CIS 3260",
+        "CIS 4970",
+        "CIS 4980",
+        "CIS 3265"
+      ],
+      "CIS Majors": [
+        "CIS 3260",
+        "CIS 4970",
+        "CIS 4980",
+        "CIS 3265"
+      ],
+      "Required Sets of Electives": [],
+      "Artificial Intelligenceand Analytics Concentration": [],
+      "Digital Innovation and Business Transformation Concentration": [],
+      "Application Development Concentration": [],
+      "Cybersecurity Concentration": [
+        "CIS 4970",
+        "CIS 4980",
+        "CIS 2010",
+        "CIS 3260"
+      ]
+    },
+    "elective_groups": [],
+    "progression_notes": "",
+    "restrictions": "",
+    "source_url": "https://catalogs.gsu.edu/preview_program.php?catoid=42&poid=12246",
+    "parsed_date": "2026-01-23T11:51:23.521471"
+  },
+  {
+    "major_name": "Health Sciences",
+    "degree_type": "B.I.S.",
+    "college": "Byrdine F. Lewis College of Nursing and Health Professions",
+    "catalog_year": "2025-2026",
+    "total_hours": 120,
+    "required_courses": {
+      "Major Core Area of Concentration- Health Sciences, 30 Hours": [
+        "HS 3120",
+        "OT 2100"
+      ],
+      "Electives (15 Hours)": []
+    },
+    "elective_groups": [],
+    "progression_notes": "",
+    "restrictions": "",
+    "source_url": "https://catalogs.gsu.edu/preview_program.php?catoid=42&poid=12238",
+    "parsed_date": "2026-01-23T11:51:23.521504"
+  }
+]

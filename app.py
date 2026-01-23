@@ -709,8 +709,10 @@ with tab1:
         major = st.session_state.selected_major
         school = st.session_state.selected_school
 
-        # Get completed courses
+        # Get completed courses and currently enrolled courses
         completed_courses = [c['course_code'] for c in eval_data['completed_courses']]
+        in_progress_courses = [c['course_code'] for c in eval_data['in_progress_courses']]
+        all_taken_courses = completed_courses + in_progress_courses
 
         # Show degree progress
         col_prog1, col_prog2, col_prog3 = st.columns(3)
@@ -728,7 +730,11 @@ with tab1:
         # Show next available courses based on catalog
         st.markdown("#### 🟢 Courses You Can Take Now")
 
-        next_courses = catalog_loader.get_recommended_next_courses(school, major, completed_courses, limit=8)
+        # Show info about currently enrolled courses
+        if in_progress_courses:
+            st.info(f"📚 Excluding {len(in_progress_courses)} course(s) you're currently enrolled in")
+
+        next_courses = catalog_loader.get_recommended_next_courses(school, major, all_taken_courses, limit=8)
 
         if next_courses:
             cols = st.columns(2)
@@ -751,9 +757,10 @@ with tab1:
         with req_tab1:
             core_courses = catalog_loader.get_core_courses(school, major)
             completed_core = [c for c in core_courses if c['course_code'] in completed_courses]
-            pending_core = [c for c in core_courses if c['course_code'] not in completed_courses]
+            in_progress_core = [c for c in core_courses if c['course_code'] in in_progress_courses]
+            pending_core = [c for c in core_courses if c['course_code'] not in all_taken_courses]
 
-            col1, col2 = st.columns(2)
+            col1, col2, col3 = st.columns(3)
 
             with col1:
                 st.markdown("**Completed:**")
@@ -764,22 +771,37 @@ with tab1:
                     st.markdown("*None yet*")
 
             with col2:
+                st.markdown("**Currently Enrolled:**")
+                if in_progress_core:
+                    for course in in_progress_core:
+                        st.markdown(f"📚 {course['course_code']}: {course['course_name']}")
+                else:
+                    st.markdown("*None*")
+
+            with col3:
                 st.markdown("**Still Needed:**")
                 if pending_core:
                     for course in pending_core:
                         st.markdown(f"⏳ {course['course_code']}: {course['course_name']}")
                 else:
-                    st.success("✅ All core courses completed!")
+                    st.success("✅ All core courses done!")
 
         with req_tab2:
             electives = catalog_loader.get_elective_courses(school, major)
             if electives:
                 st.markdown("Choose electives based on your interests:")
                 for elective in electives:
-                    can_take = catalog_loader.check_prerequisites_met(
-                        school, major, elective['course_code'], completed_courses
-                    )['can_take']
-                    status = "✅ Available" if can_take else "🔒 Prerequisites needed"
+                    # Check if already taking or completed
+                    if elective['course_code'] in all_taken_courses:
+                        if elective['course_code'] in completed_courses:
+                            status = "✅ Completed"
+                        else:
+                            status = "📚 Currently Enrolled"
+                    else:
+                        can_take = catalog_loader.check_prerequisites_met(
+                            school, major, elective['course_code'], all_taken_courses
+                        )['can_take']
+                        status = "✅ Available" if can_take else "🔒 Prerequisites needed"
                     st.markdown(f"- **{elective['course_code']}**: {elective['course_name']} - {status}")
             else:
                 st.info("No electives defined for this major.")
@@ -788,9 +810,10 @@ with tab1:
             math_reqs = catalog_loader.get_math_requirements(school, major)
             if math_reqs:
                 completed_math = [m for m in math_reqs if m['course_code'] in completed_courses]
-                pending_math = [m for m in math_reqs if m['course_code'] not in completed_courses]
+                in_progress_math = [m for m in math_reqs if m['course_code'] in in_progress_courses]
+                pending_math = [m for m in math_reqs if m['course_code'] not in all_taken_courses]
 
-                col1, col2 = st.columns(2)
+                col1, col2, col3 = st.columns(3)
 
                 with col1:
                     st.markdown("**Completed:**")
@@ -801,12 +824,20 @@ with tab1:
                         st.markdown("*None yet*")
 
                 with col2:
+                    st.markdown("**Currently Enrolled:**")
+                    if in_progress_math:
+                        for course in in_progress_math:
+                            st.markdown(f"📚 {course['course_code']}: {course['course_name']}")
+                    else:
+                        st.markdown("*None*")
+
+                with col3:
                     st.markdown("**Still Needed:**")
                     if pending_math:
                         for course in pending_math:
                             st.markdown(f"⏳ {course['course_code']}: {course['course_name']}")
                     else:
-                        st.success("✅ All math requirements completed!")
+                        st.success("✅ All math done!")
 
 with tab3:
     st.markdown("### 📚 Catalog Explorer")
