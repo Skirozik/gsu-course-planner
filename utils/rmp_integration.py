@@ -148,6 +148,110 @@ class RateMyProfessorAPI:
         school_id = self.GEORGIA_TECH_SCHOOL_ID if "tech" in school.lower() else self.GSU_SCHOOL_ID
         return self.search_professor(professor_name, school_id)
 
+    def search_all_professors(self, professor_name: str, school_id: str = None) -> List[Dict]:
+        """
+        Search for ALL matching professors (not just first match)
+
+        Args:
+            professor_name: Full name or last name of professor
+            school_id: RMP school ID (defaults to GSU)
+
+        Returns:
+            List of professor data dicts (empty list if none found)
+        """
+        if school_id is None:
+            school_id = self.GSU_SCHOOL_ID
+
+        name = professor_name.strip()
+
+        query = """
+        query NewSearchTeachersQuery($text: String!, $schoolID: ID!) {
+          newSearch {
+            teachers(query: {text: $text, schoolID: $schoolID}) {
+              edges {
+                node {
+                  id
+                  firstName
+                  lastName
+                  avgRating
+                  avgDifficulty
+                  numRatings
+                  wouldTakeAgainPercent
+                  department
+                }
+              }
+            }
+          }
+        }
+        """
+
+        variables = {
+            "text": name,
+            "schoolID": school_id
+        }
+
+        try:
+            self._rate_limit()
+            response = self.session.post(
+                self.BASE_URL,
+                json={"query": query, "variables": variables},
+                timeout=10
+            )
+
+            if response.status_code != 200:
+                logger.warning(f"RMP API returned {response.status_code} for {name}")
+                return []
+
+            data = response.json()
+            edges = data.get("data", {}).get("newSearch", {}).get("teachers", {}).get("edges", [])
+
+            if not edges:
+                return []
+
+            # Return ALL matches
+            professors = []
+            for edge in edges:
+                prof_data = edge["node"]
+                professors.append({
+                    "id": prof_data["id"],
+                    "name": f"{prof_data['firstName']} {prof_data['lastName']}",
+                    "rating": round(prof_data["avgRating"], 1) if prof_data["avgRating"] else None,
+                    "difficulty": round(prof_data["avgDifficulty"], 1) if prof_data["avgDifficulty"] else None,
+                    "num_ratings": prof_data["numRatings"],
+                    "would_take_again": round(prof_data["wouldTakeAgainPercent"]) if prof_data["wouldTakeAgainPercent"] else None,
+                    "department": prof_data["department"]
+                })
+
+            return professors
+
+        except Exception as e:
+            logger.error(f"Error fetching RMP data for {name}: {e}")
+            return []
+
+    def batch_search_professors(self, professor_names: List[str], school_id: str = None) -> Dict[str, Dict]:
+        """
+        Search for multiple professors and return mapping
+
+        Args:
+            professor_names: List of professor names
+            school_id: RMP school ID (defaults to GSU)
+
+        Returns:
+            Dict mapping professor name to RMP data (best match per name)
+        """
+        results = {}
+
+        for name in professor_names:
+            if not name or name.strip().lower() in ['tba', 'staff', 'tbd']:
+                continue
+
+            # Get best match (first result)
+            prof_data = self.search_professor(name, school_id)
+            if prof_data:
+                results[name] = prof_data
+
+        return results
+
     def get_rating_emoji(self, rating: Optional[float]) -> str:
         """Get emoji representation of rating"""
         if rating is None:

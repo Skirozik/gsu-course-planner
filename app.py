@@ -15,6 +15,7 @@ from utils.catalog_loader import get_catalog_loader
 from utils.rmp_integration import get_rmp_api, enrich_courses_with_rmp, format_rmp_display
 from utils.export_utils import generate_pdf_schedule, generate_ics_calendar, generate_text_schedule
 from utils.demo_professors import add_demo_professors
+from utils.section_recommender import get_ranked_sections
 
 # Cached PDF parsing to avoid re-parsing the same file multiple times
 @st.cache_data
@@ -24,6 +25,61 @@ def parse_academic_eval_cached(file_content: bytes) -> dict:
     Uses file content as cache key.
     """
     return parse_academic_eval(file_content)
+
+
+def generate_sample_sections(course_code: str, num_sections: int = 3) -> list:
+    """
+    Generate sample section data for a course
+
+    In production, this would come from:
+    - GSU course schedule scraper
+    - PAWS/Banner API
+    - Manual section database
+
+    Args:
+        course_code: Course code (e.g., "CSC 3320")
+        num_sections: Number of sections to generate
+
+    Returns:
+        List of section dicts
+    """
+    from utils.demo_professors import DEMO_PROFESSORS
+    import random
+
+    # Sample times and locations
+    times = ["MWF 10:00-10:50", "TTh 2:00-3:15", "MW 6:00-7:15", "TTh 10:00-11:15"]
+    locations = ["Classroom South 101", "Langdale Hall 200", "Online", "Library 305", "Science Building 201"]
+
+    # Get professor from demo data or use TBA
+    professor = DEMO_PROFESSORS.get(course_code, "Staff")
+
+    # Generate multiple professors for the course
+    sample_professors = [
+        professor,
+        "Smith, John",
+        "Lee, Angela",
+        "Johnson, Mary",
+        "Davis, Robert",
+        "Staff"
+    ]
+
+    sections = []
+    for i in range(min(num_sections, len(times))):
+        section_num = f"{i+1:03d}"  # 001, 002, 003, etc.
+
+        # Rotate through professors
+        instructor = sample_professors[i % len(sample_professors)]
+
+        sections.append({
+            "section": section_num,
+            "instructor": instructor,
+            "crn": f"{12345 + i}",
+            "time": times[i],
+            "days": times[i].split()[0],  # Extract days
+            "location": locations[i % len(locations)]
+        })
+
+    return sections
 
 # Page config
 st.set_page_config(
@@ -699,6 +755,74 @@ with tab1:
                                         st.write(f"**👨‍🏫 Professor:** {professor}")
                                         if professor.lower() not in ['tba', 'staff', 'tbd']:
                                             st.caption("🔍 Looking up rating...")
+
+                                # Section rankings (NEW FEATURE!)
+                                with st.expander("📊 Available Sections (Ranked by Professor Quality)"):
+                                    st.caption("Sections are ranked using Rate My Professor data - best professors first!")
+
+                                    # Generate sample sections for this course
+                                    course_code = course.get('course_code', '')
+                                    if course_code:
+                                        try:
+                                            # Get sample sections
+                                            sample_sections = generate_sample_sections(course_code, num_sections=4)
+
+                                            # Rank sections
+                                            school_name = info.get('school', 'Georgia State University')
+                                            ranked_sections = get_ranked_sections(
+                                                course_code=course_code,
+                                                sections_data=sample_sections,
+                                                school=school_name
+                                            )
+
+                                            # Display ranked sections
+                                            for section in ranked_sections[:3]:  # Show top 3
+                                                # Rank badge
+                                                if section.rank == 1:
+                                                    rank_emoji = "🥇"
+                                                    rank_color = "#FFD700"
+                                                elif section.rank == 2:
+                                                    rank_emoji = "🥈"
+                                                    rank_color = "#C0C0C0"
+                                                elif section.rank == 3:
+                                                    rank_emoji = "🥉"
+                                                    rank_color = "#CD7F32"
+                                                else:
+                                                    rank_emoji = f"#{section.rank}"
+                                                    rank_color = "#666666"
+
+                                                # Section card
+                                                st.markdown(f"""
+                                                <div style="background: linear-gradient(90deg, {rank_color}22 0%, {rank_color}11 100%);
+                                                            padding: 0.75rem; border-radius: 8px; margin: 0.5rem 0;
+                                                            border-left: 4px solid {rank_color};">
+                                                    <strong>{rank_emoji} Section {section.section}</strong> - {section.instructor_normalized}
+                                                </div>
+                                                """, unsafe_allow_html=True)
+
+                                                # Section details
+                                                col_s1, col_s2 = st.columns(2)
+
+                                                with col_s1:
+                                                    if section.time:
+                                                        st.caption(f"🕐 {section.time}")
+                                                    if section.location:
+                                                        st.caption(f"📍 {section.location}")
+
+                                                with col_s2:
+                                                    if section.rating:
+                                                        rating_emoji_s = "🌟" if section.rating >= 4.5 else "⭐" if section.rating >= 4.0 else "✨" if section.rating >= 3.5 else "💫"
+                                                        st.caption(f"{rating_emoji_s} {section.rating}/5.0 ({section.num_reviews} reviews)")
+                                                        st.caption(f"📊 Quality Score: {section.score}")
+                                                    else:
+                                                        st.caption("⚠️ No RMP data")
+
+                                            # Show note about fallback
+                                            if len(ranked_sections) > 3:
+                                                st.info(f"💡 **Tip:** If the top section fills, try Section {ranked_sections[1].section} next!")
+
+                                        except Exception as e:
+                                            st.warning("Section ranking temporarily unavailable")
 
                                 st.markdown("---")
 
