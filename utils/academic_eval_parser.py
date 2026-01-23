@@ -89,15 +89,46 @@ def parse_student_info(text: str) -> Dict:
     if gpa_match:
         info["gpa"] = float(gpa_match.group(1))
 
-    # Major/Pathway - handle both "BS/BA Major Name" and "HS: Major Name" formats
-    major_match = re.search(r'Majors/Pathway\s+(?:(?:HS|BS|BA):\s*)?([A-Za-z0-9\-\s&,]+?)\s+College', text)
-    if major_match:
-        major_text = major_match.group(1).strip()
-        # Remove common prefixes if they weren't caught by the regex
-        for prefix in ['HS:', 'BS:', 'BA:']:
-            if major_text.startswith(prefix):
-                major_text = major_text[len(prefix):].strip()
-        info["major"] = major_text
+    # Major/Pathway - try multiple patterns to handle different DegreeWorks formats
+    major_patterns = [
+        # Pattern 1: Majors/Pathway BS: Major Name College (with optional [CODE])
+        r'Majors?/Pathway\s+(?:(?:HS|BS|BA|MS|MA):\s*)?([A-Za-z0-9\-\s&,\[\]]+?)\s+College',
+        # Pattern 2: Major: Major Name
+        r'Major:\s+([A-Za-z0-9\-\s&,\[\]]+?)(?:\s+(?:College|Degree|Credits)|$)',
+        # Pattern 3: BS in Major Name or BS Major Name
+        r'(?:BS|BA|MS|MA)\s+(?:in\s+)?([A-Za-z0-9\-\s&,\[\]]+?)(?:\s+(?:INCOMPLETE|COMPLETE|College)|$)',
+        # Pattern 4: Majors/Pathway without College
+        r'Majors?/Pathway\s+(?:(?:HS|BS|BA|MS|MA):\s*)?([A-Za-z0-9\-\s&,\[\]]+?)(?:\s+(?:Degree|Credits|Catalog)|$)',
+        # Pattern 5: Program or Plan
+        r'(?:Program|Plan):\s+([A-Za-z0-9\-\s&,\[\]]+?)(?:\s+(?:College|Degree|Credits)|$)',
+    ]
+
+    major_found = False
+    for pattern in major_patterns:
+        major_match = re.search(pattern, text, re.IGNORECASE)
+        if major_match:
+            major_text = major_match.group(1).strip()
+            # Remove common prefixes if they weren't caught by the regex
+            for prefix in ['HS:', 'BS:', 'BA:', 'MS:', 'MA:', 'in']:
+                if major_text.upper().startswith(prefix.upper()):
+                    major_text = major_text[len(prefix):].strip()
+            # Clean up any trailing noise
+            major_text = re.sub(r'\s+(INCOMPLETE|COMPLETE|IN-PROGRESS).*$', '', major_text, flags=re.IGNORECASE)
+            # Remove bracketed codes like [CSCI] or [CS]
+            major_text = re.sub(r'\s*\[[\w\s]+\]\s*', ' ', major_text).strip()
+            if major_text and len(major_text) > 3:  # Sanity check
+                info["major"] = major_text
+                major_found = True
+                break
+
+    # If no major found, try to extract from degree name
+    if not major_found:
+        degree_match = re.search(r'(?:BS|BA|MS|MA|AS)\s+(?:Degree\s+-\s+)?([A-Za-z0-9\-\s&,\[\]]+?)(?:\s+(?:INCOMPLETE|COMPLETE)|$)', text, re.IGNORECASE)
+        if degree_match:
+            major_text = degree_match.group(1).strip()
+            # Remove bracketed codes like [CSCI]
+            major_text = re.sub(r'\s*\[[\w\s]+\]\s*', ' ', major_text).strip()
+            info["major"] = major_text
 
     # College - handle both "College of ..." and other college name formats
     college_match = re.search(r'College\s+([A-Za-z0-9\s&,\.]+?)(?=Degree|$)', text)

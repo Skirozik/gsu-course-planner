@@ -13,6 +13,15 @@ from utils.prerequisites import (
 )
 from utils.catalog_loader import get_catalog_loader
 
+# Cached PDF parsing to avoid re-parsing the same file multiple times
+@st.cache_data
+def parse_academic_eval_cached(file_content: bytes) -> dict:
+    """
+    Cached wrapper for parse_academic_eval to avoid re-parsing the same PDF.
+    Uses file content as cache key.
+    """
+    return parse_academic_eval(file_content)
+
 # Page config
 st.set_page_config(
     page_title="GSU Course Planner",
@@ -239,14 +248,16 @@ with st.expander("⚠️ Important Disclaimer", expanded=False):
 # Initialize session state
 if 'eval_data' not in st.session_state:
     st.session_state.eval_data = None
-if 'schedule_generated' not in st.session_state:
-    st.session_state.schedule_generated = False
+if 'processing_state' not in st.session_state:
+    st.session_state.processing_state = 'idle'  # idle, processing, complete, error
 if 'ai_recommendations' not in st.session_state:
     st.session_state.ai_recommendations = None
 if 'selected_major' not in st.session_state:
     st.session_state.selected_major = None
 if 'selected_school' not in st.session_state:
     st.session_state.selected_school = None
+if 'last_file_hash' not in st.session_state:
+    st.session_state.last_file_hash = None
 
 # Initialize catalog loader
 catalog_loader = get_catalog_loader()
@@ -278,65 +289,93 @@ with tab1:
         )
 
         if uploaded_file:
-            st.markdown("""
-            <div class="success-box">
-            ✅ <strong>File loaded successfully!</strong><br>
-            Analyzing your academic evaluation...
-            </div>
-            """, unsafe_allow_html=True)
+            # Detect if this is a new file upload
+            import hashlib
+            file_content = uploaded_file.read()
+            file_hash = hashlib.md5(file_content).hexdigest()
 
-            # Parse the academic evaluation
-            with st.spinner("📊 Analyzing your academic evaluation..."):
-                try:
-                    file_content = uploaded_file.read()
-                    st.session_state.eval_data = parse_academic_eval(file_content)
-                    eval_data = st.session_state.eval_data
+            # Check if this is a different file than before
+            if file_hash != st.session_state.last_file_hash:
+                # New file detected - reset all state
+                st.session_state.last_file_hash = file_hash
+                st.session_state.processing_state = 'idle'
+                st.session_state.ai_recommendations = None
+                st.session_state.selected_major = None
+                st.session_state.selected_school = None
 
-                    # Show parsed info with better layout
-                    with st.expander("📋 Your Academic Summary", expanded=True):
-                        info = eval_data["student_info"]
-                        
-                        # Student info cards
-                        st.markdown("<div class='subsection-header'>👤 Student Information</div>", unsafe_allow_html=True)
-                        metric_cols = st.columns(4)
-                        
-                        with metric_cols[0]:
-                            st.markdown(f"""
-                            <div class="metric-card">
-                            <strong>Name</strong><br>
-                            {info['student_name']}
-                            </div>
-                            """, unsafe_allow_html=True)
-                        
-                        with metric_cols[1]:
-                            st.markdown(f"""
-                            <div class="metric-card">
-                            <strong>Major</strong><br>
-                            {info['major']}
-                            </div>
-                            """, unsafe_allow_html=True)
-                        
-                        with metric_cols[2]:
-                            st.markdown(f"""
-                            <div class="metric-card">
-                            <strong>GPA</strong><br>
-                            {info['gpa']:.2f}
-                            </div>
-                            """, unsafe_allow_html=True)
-                        
-                        with metric_cols[3]:
-                            progress_pct = (info['credits_applied'] / info['credits_required']) * 100
-                            st.markdown(f"""
-                            <div class="metric-card">
-                            <strong>Progress</strong><br>
-                            {progress_pct:.1f}%
-                            </div>
-                            """, unsafe_allow_html=True)
-                        
-                        # Progress bar
-                        st.markdown("<div class='subsection-header'>📈 Credits Progress</div>", unsafe_allow_html=True)
-                        st.progress(info['credits_applied'] / info['credits_required'])
-                        st.markdown(f"**{info['credits_applied']}/{info['credits_required']} credits** ({progress_pct:.1f}%)")
+                st.markdown("""
+                <div class="success-box">
+                ✅ <strong>New file detected!</strong><br>
+                Analyzing your academic evaluation...
+                </div>
+                """, unsafe_allow_html=True)
+
+                # Parse the academic evaluation (using cached version)
+                with st.spinner("📊 Analyzing your academic evaluation..."):
+                    try:
+                        st.session_state.eval_data = parse_academic_eval_cached(file_content)
+
+                    except Exception as e:
+                        st.error(f"Error parsing file: {str(e)}")
+                        st.session_state.eval_data = None
+                        st.session_state.processing_state = 'error'
+            else:
+                # Same file as before
+                st.markdown("""
+                <div class="info-box">
+                ✅ <strong>File loaded!</strong>
+                </div>
+                """, unsafe_allow_html=True)
+
+            # Display eval data if available
+            if st.session_state.eval_data:
+                eval_data = st.session_state.eval_data
+
+                # Show parsed info with better layout
+                with st.expander("📋 Your Academic Summary", expanded=True):
+                    info = eval_data["student_info"]
+
+                    # Student info cards
+                    st.markdown("<div class='subsection-header'>👤 Student Information</div>", unsafe_allow_html=True)
+                    metric_cols = st.columns(4)
+
+                    with metric_cols[0]:
+                        st.markdown(f"""
+                        <div class="metric-card">
+                        <strong>Name</strong><br>
+                        {info['student_name']}
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                    with metric_cols[1]:
+                        st.markdown(f"""
+                        <div class="metric-card">
+                        <strong>Major</strong><br>
+                        {info['major']}
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                    with metric_cols[2]:
+                        st.markdown(f"""
+                        <div class="metric-card">
+                        <strong>GPA</strong><br>
+                        {info['gpa']:.2f}
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                    with metric_cols[3]:
+                        progress_pct = (info['credits_applied'] / info['credits_required']) * 100
+                        st.markdown(f"""
+                        <div class="metric-card">
+                        <strong>Progress</strong><br>
+                        {progress_pct:.1f}%
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                    # Progress bar
+                    st.markdown("<div class='subsection-header'>📈 Credits Progress</div>", unsafe_allow_html=True)
+                    st.progress(info['credits_applied'] / info['credits_required'])
+                    st.markdown(f"**{info['credits_applied']}/{info['credits_required']} credits** ({progress_pct:.1f}%)")
 
                     # Show completed courses with better styling
                     with st.expander(f"✅ Completed Courses ({len(eval_data['completed_courses'])})"):
@@ -380,9 +419,25 @@ with tab1:
                             else:
                                 st.write(f"- **{req['courses'][0]}** ({req['credits']} credits)")
 
-                except Exception as e:
-                    st.error(f"Error parsing file: {str(e)}")
-                    st.session_state.eval_data = None
+        # Major Detection Display - After PDF is parsed
+        if st.session_state.eval_data:
+            st.markdown("---")
+            detected_major = st.session_state.eval_data["student_info"]["major"]
+
+            if detected_major:
+                st.markdown(f"""
+                <div class="success-box">
+                ✅ <strong>Detected Major from PDF:</strong> {detected_major}<br>
+                <small>You can confirm or change this in the preferences form below.</small>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown("""
+                <div class="warning-box">
+                ⚠️ <strong>Major not automatically detected</strong><br>
+                <small>Please select your major in the preferences form below.</small>
+                </div>
+                """, unsafe_allow_html=True)
 
         st.markdown("---")
 
@@ -397,16 +452,29 @@ with tab1:
                 options=available_schools,
                 help="Choose your institution to get accurate course recommendations"
             )
-            
+
             # Select major based on school
             available_majors = catalog_loader.get_majors_for_school(selected_school)
+
+            # Pre-select major if we have a confirmed major from PDF
+            default_major_index = 0
+            if st.session_state.eval_data:
+                confirmed_major = st.session_state.eval_data["student_info"].get("major", "")
+                # Try to find a matching major in the available majors
+                for idx, major in enumerate(available_majors):
+                    if confirmed_major.lower() in major.lower() or major.lower() in confirmed_major.lower():
+                        default_major_index = idx
+                        break
+
             selected_major = st.selectbox(
                 "Select Your Major",
                 options=available_majors,
+                index=default_major_index,
                 help="Choose your degree program to get tailored recommendations"
             )
-            st.session_state.selected_major = selected_major
-            st.session_state.selected_school = selected_school
+
+            # Note: selected_major and selected_school are local variables
+            # They will only be saved to session state when form is submitted
 
             # Career goals
             career_goals = st.text_area(
@@ -462,7 +530,11 @@ with tab1:
         st.subheader("📅 Your Personalized Schedule")
 
         if submit_button and st.session_state.eval_data:
-            st.session_state.schedule_generated = True
+            # NOW save the form values to session state (after submission)
+            st.session_state.selected_major = selected_major
+            st.session_state.selected_school = selected_school
+            st.session_state.processing_state = 'processing'
+
             eval_data = st.session_state.eval_data
 
             try:
@@ -519,16 +591,19 @@ with tab1:
                         st.warning(f"AI recommendations unavailable: {str(e)}")
                         st.info("Showing basic recommendations based on prerequisites.")
                         use_ai = False
-            
+
+                # Mark as complete if we got here
+                st.session_state.processing_state = 'complete'
+
             except Exception as e:
                 st.error(f"❌ Error generating schedule: {str(e)}")
                 import traceback
                 st.error(f"Debug info: {traceback.format_exc()}")
-                st.session_state.schedule_generated = False
+                st.session_state.processing_state = 'error'
                 use_ai = False
-            
+
             # Only show success and results if no error occurred
-            if st.session_state.schedule_generated:
+            if st.session_state.processing_state == 'complete':
                 st.success("✅ Schedule Generated!")
 
                 # Display student info summary
@@ -616,13 +691,19 @@ with tab1:
         elif submit_button and not st.session_state.eval_data:
             st.warning("⚠️ Please upload your academic evaluation first.")
 
-        elif not submit_button and not st.session_state.schedule_generated:
+        elif st.session_state.processing_state == 'idle':
             st.info("👆 Upload your academic evaluation and click 'Generate My Schedule' to get started.")
 
-    # Add catalog-based recommendations section if major is selected
-    if st.session_state.eval_data and st.session_state.selected_major:
+        elif st.session_state.processing_state == 'error':
+            st.error("❌ An error occurred. Please try uploading your file again.")
+
+    # Add catalog-based recommendations section ONLY after form submission
+    if (st.session_state.eval_data and
+        st.session_state.selected_major and
+        st.session_state.processing_state == 'complete'):
         st.markdown("---")
-        st.markdown("### 📚 Catalog-Based Recommendations")
+        st.markdown("### 📚 Catalog-Based Course Requirements")
+        st.markdown("*These recommendations are based on your selected major's course catalog.*")
 
         eval_data = st.session_state.eval_data
         major = st.session_state.selected_major
