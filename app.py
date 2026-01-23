@@ -459,22 +459,20 @@ with tab1:
             # Select major based on school
             available_majors = catalog_loader.get_majors_for_school(selected_school)
 
-            # Pre-select major if we have a confirmed major from PDF
-            default_major_index = 0
-            if st.session_state.eval_data:
-                confirmed_major = st.session_state.eval_data["student_info"].get("major", "")
-                # Try to find a matching major in the available majors
-                for idx, major in enumerate(available_majors):
-                    if confirmed_major.lower() in major.lower() or major.lower() in confirmed_major.lower():
-                        default_major_index = idx
-                        break
-
-            selected_major = st.selectbox(
-                "Select Your Major",
-                options=available_majors,
-                index=default_major_index,
-                help="Choose your degree program to get tailored recommendations"
-            )
+            # Check if we already have major from PDF
+            if st.session_state.eval_data and st.session_state.eval_data["student_info"].get("major"):
+                # Major already known from uploaded PDF - display as read-only
+                confirmed_major = st.session_state.eval_data["student_info"]["major"]
+                st.markdown(f"**📚 Your Major:** {confirmed_major}")
+                st.caption("Detected from your DegreeWorks file")
+                selected_major = confirmed_major
+            else:
+                # No major in PDF - ask user to select
+                selected_major = st.selectbox(
+                    "Select Your Major",
+                    options=available_majors,
+                    help="Choose your degree program to get tailored recommendations"
+                )
 
             # Note: selected_major and selected_school are local variables
             # They will only be saved to session state when form is submitted
