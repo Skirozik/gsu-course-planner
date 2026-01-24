@@ -14,7 +14,7 @@ import time
 import logging
 from datetime import datetime
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)  # Only show warnings/errors in production
 logger = logging.getLogger(__name__)
 
 
@@ -164,10 +164,6 @@ class GSUBannerAPI:
 
             # Parse JSON response
             data = response.json()
-
-            # Debug: print raw response structure
-            logger.info(f"Response keys: {list(data.keys()) if isinstance(data, dict) else 'Not a dict'}")
-            logger.info(f"Response preview: {str(data)[:500]}")
 
             if not data or "data" not in data:
                 logger.warning("No data in response")

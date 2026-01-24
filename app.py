@@ -16,6 +16,7 @@ from utils.rmp_integration import get_rmp_api, enrich_courses_with_rmp, format_r
 from utils.export_utils import generate_pdf_schedule, generate_ics_calendar, generate_text_schedule
 from utils.demo_professors import add_demo_professors
 from utils.section_recommender import get_ranked_sections
+from utils.gsu_banner_api import get_gsu_sections
 
 # Cached PDF parsing to avoid re-parsing the same file multiple times
 @st.cache_data
@@ -828,12 +829,17 @@ with tab1:
                                 with st.expander("📊 Available Sections (Ranked by Professor Quality)"):
                                     st.caption("Sections are ranked using Rate My Professor data - best professors first!")
 
-                                    # Generate sample sections for this course
+                                    # Get real sections from GSU Banner API
                                     course_code = course.get('course_code', '')
                                     if course_code:
                                         try:
-                                            # Get sample sections
-                                            sample_sections = generate_sample_sections(course_code, num_sections=4)
+                                            # Get real sections from Banner
+                                            sample_sections = get_gsu_sections(course_code)
+
+                                            # Check if sections were found
+                                            if not sample_sections:
+                                                st.info(f"ℹ️ No sections found for {course_code} in the current term. This course may not be offered this semester.")
+                                                continue
 
                                             # Rank sections
                                             school_name = info.get('school', 'Georgia State University')
