@@ -5,6 +5,7 @@ from datetime import datetime
 
 # Import our custom modules
 from utils.academic_eval_parser import parse_academic_eval, get_next_semester_recommendations
+from utils.gatech_parser import parse_gatech_degreeworks
 from utils.prerequisites import (
     get_course_info, get_prerequisites, get_corequisites,
     get_all_prerequisites, check_prerequisites_met, get_courses_unlocked_by,
@@ -350,14 +351,14 @@ st.markdown("""
 # Header with improved design
 st.markdown("""
 <div class="main-header">
-    <h1>🎓 GSU Course Planner</h1>
+    <h1>🎓 Course Planner</h1>
     <p class="tagline">AI-Powered Academic Planning Assistant</p>
 </div>
 """, unsafe_allow_html=True)
 
 st.markdown("""
 <div style="background: linear-gradient(90deg, #E8F0FF 0%, #FFF8E1 100%); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
-    <p style="margin: 0; color: #333; font-size: 1em;"><strong>Welcome!</strong> Upload your DegreeWorks academic evaluation to get personalized course recommendations, track your progress, and plan your path to graduation.</p>
+    <p style="margin: 0; color: #333; font-size: 1em;"><strong>Welcome!</strong> Select your school below, then upload your DegreeWorks academic evaluation to get personalized course recommendations, track your progress, and plan your path to graduation.</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -389,24 +390,68 @@ if 'last_file_hash' not in st.session_state:
 # Initialize catalog loader
 catalog_loader = get_catalog_loader()
 
+# School Selection (FIRST STEP)
+st.markdown("<div class='section-header'>🏫 Step 1: Select Your School</div>", unsafe_allow_html=True)
+
+col_school1, col_school2, col_school3 = st.columns([1, 1, 1])
+
+with col_school1:
+    if st.button("🟦 Georgia State University", use_container_width=True, type="primary" if st.session_state.selected_school == "Georgia State University" else "secondary"):
+        st.session_state.selected_school = "Georgia State University"
+        st.rerun()
+
+with col_school2:
+    if st.button("🟨 Georgia Tech", use_container_width=True, type="primary" if st.session_state.selected_school == "Georgia Tech" else "secondary"):
+        st.session_state.selected_school = "Georgia Tech"
+        st.rerun()
+
+with col_school3:
+    st.markdown("<br>", unsafe_allow_html=True)
+
+# Show selected school
+if st.session_state.selected_school:
+    st.markdown(f"""
+    <div class="success-box">
+    ✅ <strong>Selected School:</strong> {st.session_state.selected_school}
+    </div>
+    """, unsafe_allow_html=True)
+
+st.markdown("---")
+
 # Main content in tabs
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["📋 Upload & Plan", "🔍 Prerequisite Lookup", "📚 Catalog Explorer", "ℹ️ How It Works", "📊 About"])
 
 with tab1:
-    col1, col2 = st.columns([1, 1])
+    # Only show upload section if school is selected
+    if not st.session_state.selected_school:
+        st.info("👆 Please select your school above to continue")
+    else:
+        col1, col2 = st.columns([1, 1])
 
-    with col1:
-        st.markdown("<div class='section-header'>📄 Step 1: Upload Your Academic Evaluation</div>", unsafe_allow_html=True)
-        
-        st.markdown("""
-        <div class="info-box">
-        <strong>How to get your Academic Evaluation:</strong><br>
-        1. Log into <strong>PAWS</strong> (paws.gsu.edu)<br>
-        2. Go to <strong>Student</strong> tab<br>
-        3. Click <strong>DegreeWorks</strong><br>
-        4. Click <strong>Print/Export</strong> and save as PDF
-        </div>
-        """, unsafe_allow_html=True)
+        with col1:
+            st.markdown("<div class='section-header'>📄 Step 2: Upload Your Academic Evaluation</div>", unsafe_allow_html=True)
+
+        # Show school-specific instructions
+        if st.session_state.selected_school == "Georgia State University":
+            st.markdown("""
+            <div class="info-box">
+            <strong>How to get your GSU Academic Evaluation:</strong><br>
+            1. Log into <strong>PAWS</strong> (paws.gsu.edu)<br>
+            2. Go to <strong>Student</strong> tab<br>
+            3. Click <strong>DegreeWorks</strong><br>
+            4. Click <strong>Print/Export</strong> and save as PDF
+            </div>
+            """, unsafe_allow_html=True)
+        else:  # Georgia Tech
+            st.markdown("""
+            <div class="info-box">
+            <strong>How to get your Georgia Tech Academic Evaluation:</strong><br>
+            1. Log into <strong>OSCAR</strong> (oscar.gatech.edu)<br>
+            2. Go to <strong>Student Services</strong><br>
+            3. Click <strong>Degree Works</strong><br>
+            4. Click <strong>Print/Export</strong> and save as PDF
+            </div>
+            """, unsafe_allow_html=True)
 
         # File uploader
         uploaded_file = st.file_uploader(
@@ -437,13 +482,18 @@ with tab1:
                 </div>
                 """, unsafe_allow_html=True)
 
-                # Parse the academic evaluation (using cached version)
+                # Parse the academic evaluation (route to correct parser based on school)
                 with st.spinner("📊 Analyzing your academic evaluation..."):
                     try:
-                        st.session_state.eval_data = parse_academic_eval_cached(file_content)
+                        # Route to correct parser based on selected school
+                        if st.session_state.selected_school == "Georgia Tech":
+                            st.session_state.eval_data = parse_gatech_degreeworks(file_content)
+                        else:  # Georgia State University
+                            st.session_state.eval_data = parse_academic_eval_cached(file_content)
 
                     except Exception as e:
                         st.error(f"Error parsing file: {str(e)}")
+                        st.error(f"Please make sure you uploaded the correct DegreeWorks PDF for {st.session_state.selected_school}")
                         st.session_state.eval_data = None
                         st.session_state.processing_state = 'error'
             else:
