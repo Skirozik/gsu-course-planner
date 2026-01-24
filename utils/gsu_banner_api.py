@@ -4,7 +4,7 @@ GSU Banner API Client
 Calls GSU's Banner/Ellucian API directly to get real-time course data.
 This is MUCH better than scraping HTML - we get clean JSON data.
 
-Base URL: https://registration.gsu.edu/StudentRegistrationSsb
+Base URL: https://registration.gosolar.gsu.edu/StudentRegistrationSsb
 """
 
 import requests
@@ -23,9 +23,10 @@ class GSUBannerAPI:
     Client for GSU Banner/Ellucian Self-Service API
     """
 
-    BASE_URL = "https://registration.gsu.edu/StudentRegistrationSsb"
+    BASE_URL = "https://registration.gosolar.gsu.edu/StudentRegistrationSsb"
 
     # API endpoints (found in your HTML file!)
+    TERM_SELECTION = f"{BASE_URL}/ssb/term/search?mode=search"
     SEARCH_ENDPOINT = f"{BASE_URL}/ssb/classSearch/classSearch"
     RESULTS_ENDPOINT = f"{BASE_URL}/ssb/searchResults/searchResults"
     SECTION_DETAILS = f"{BASE_URL}/ssb/searchResults/getSectionDetail"
@@ -72,6 +73,47 @@ class GSUBannerAPI:
 
         return f"{year}{term_code}"
 
+    def select_term(self, term: str) -> bool:
+        """
+        Submit term selection to Banner (required before searching)
+
+        Args:
+            term: Term code (e.g., "202601")
+
+        Returns:
+            True if successful, False otherwise
+        """
+        logger.info(f"Selecting term {term}")
+
+        try:
+            self._rate_limit()
+
+            # POST the term selection
+            payload = {
+                "term": term,
+                "studyPath": "",
+                "studyPathText": "",
+                "startDatepicker": "",
+                "endDatepicker": ""
+            }
+
+            response = self.session.post(
+                self.TERM_SELECTION,
+                data=payload,
+                timeout=10
+            )
+
+            if response.status_code == 200:
+                logger.info(f"Term {term} selected successfully")
+                return True
+            else:
+                logger.error(f"Failed to select term: {response.status_code}")
+                return False
+
+        except Exception as e:
+            logger.error(f"Error selecting term: {e}")
+            return False
+
     def search_courses(self,
                       term: str,
                       subject: str = "CSC",
@@ -90,6 +132,11 @@ class GSUBannerAPI:
             List of course section dicts with all details
         """
         logger.info(f"Searching {subject} courses for term {term}")
+
+        # First, submit term selection (required by Banner)
+        if not self.select_term(term):
+            logger.error("Failed to select term, cannot search")
+            return []
 
         # Payload for POST request (Banner uses POST for searches)
         payload = {
@@ -118,11 +165,20 @@ class GSUBannerAPI:
             # Parse JSON response
             data = response.json()
 
+            # Debug: print raw response structure
+            logger.info(f"Response keys: {list(data.keys()) if isinstance(data, dict) else 'Not a dict'}")
+            logger.info(f"Response preview: {str(data)[:500]}")
+
             if not data or "data" not in data:
                 logger.warning("No data in response")
                 return []
 
             courses = data["data"]
+
+            if courses is None:
+                logger.warning("courses is None")
+                return []
+
             logger.info(f"Found {len(courses)} sections")
 
             return courses
@@ -330,8 +386,27 @@ if __name__ == "__main__":
     current_term = api.get_current_term()
     print(f"\nCurrent term: {current_term}")
 
-    # Test: Get CSC courses
-    print(f"\nFetching CSC courses for {current_term}...")
+    # Try multiple terms to find one with data
+    test_terms = [
+        current_term,  # Spring 2026: 202601
+        "202508",      # Fall 2025
+        "202505",      # Summer 2025
+        "202501",      # Spring 2025
+    ]
+
+    print(f"\nTesting multiple terms to find course data...")
+    for term in test_terms:
+        print(f"  Trying term {term}...", end=" ")
+        test_sections = api.search_courses(term, "CSC")
+        if test_sections and len(test_sections) > 0:
+            print(f"✅ Found {len(test_sections)} CSC sections!")
+            current_term = term
+            break
+        else:
+            print(f"No data")
+
+    # Test: Get CSC 3320 sections
+    print(f"\nFetching CSC 3320 sections for term {current_term}...")
 
     sections = get_gsu_sections("CSC 3320", current_term)
 
