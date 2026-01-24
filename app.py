@@ -14,7 +14,6 @@ from utils.prerequisites import (
 from utils.catalog_loader import get_catalog_loader
 from utils.rmp_integration import get_rmp_api, enrich_courses_with_rmp, format_rmp_display
 from utils.export_utils import generate_pdf_schedule, generate_ics_calendar, generate_text_schedule
-from utils.demo_professors import add_demo_professors
 from utils.section_recommender import get_ranked_sections
 from utils.gsu_banner_api import get_gsu_sections
 
@@ -743,14 +742,8 @@ with tab1:
                     if ai_recs.get("recommended_courses"):
                         st.markdown("##### 📋 Recommended Courses")
 
-                        # Demo mode info
-                        st.info("🎭 **Demo Mode:** Showing sample professor data to demonstrate RMP integration. In production, this would pull from GSU's course schedule.")
-
                         # Get recommended courses
                         recommended_courses = ai_recs["recommended_courses"][:max_courses]
-
-                        # Add demo professors (so we can see RMP integration working)
-                        recommended_courses = add_demo_professors(recommended_courses, use_demo_mode=True)
 
                         # Enrich courses with RMP data
                         try:
