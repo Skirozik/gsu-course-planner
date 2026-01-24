@@ -20,6 +20,65 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def generate_rmp_url(professor_id: str) -> str:
+    """
+    Generate RateMyProfessors profile URL from professor ID
+
+    Args:
+        professor_id: RMP professor ID (base64 encoded)
+
+    Returns:
+        Full URL to professor's RMP profile
+    """
+    # RMP URL format: https://www.ratemyprofessors.com/professor/{numeric_id}
+    # The ID from API is base64 encoded, we need to extract the numeric part
+    # Example ID: "VGVhY2hlci0xMjM0NTY3" decodes to "Teacher-1234567"
+    import base64
+    try:
+        decoded = base64.b64decode(professor_id).decode('utf-8')
+        # Extract numeric ID after "Teacher-"
+        if 'Teacher-' in decoded:
+            numeric_id = decoded.split('Teacher-')[1]
+            return f"https://www.ratemyprofessors.com/professor/{numeric_id}"
+    except:
+        pass
+
+    # Fallback: use the encoded ID directly
+    return f"https://www.ratemyprofessors.com/professor/{professor_id}"
+
+
+def format_instructor_name(name: str) -> str:
+    """
+    Format instructor name from various formats to "First Last"
+
+    Handles:
+    - "Last, First" → "First Last"
+    - "Last, First Middle" → "First Middle Last"
+    - Already formatted names remain unchanged
+
+    Args:
+        name: Instructor name in any format
+
+    Returns:
+        Formatted name as "First Last"
+    """
+    if not name or name in ["Staff", "TBA", "To Be Announced"]:
+        return name
+
+    name = name.strip()
+
+    # Check if name is in "Last, First" format
+    if ',' in name:
+        parts = [p.strip() for p in name.split(',')]
+        if len(parts) == 2:
+            last_name, first_name = parts
+            # Handle middle names or initials in first_name
+            return f"{first_name} {last_name}"
+
+    # Name is already in "First Last" format or some other format
+    return name
+
+
 @dataclass
 class ProfessorIdentity:
     """
@@ -50,6 +109,7 @@ class SectionRanking:
     instructor_raw: str = ""  # Original from schedule
     instructor_normalized: str = ""
     professor_id: Optional[str] = None
+    rmp_url: Optional[str] = None  # RateMyProfessors profile URL
 
     # RMP data (advisory)
     rating: Optional[float] = None
@@ -363,6 +423,14 @@ def create_ranked_sections(course_code: str,
                         match_confidence = 0.8
                         break
 
+        # Format instructor name from "Last, First" to "First Last"
+        formatted_name = format_instructor_name(instructor_raw)
+
+        # Generate RMP URL if we have RMP data
+        rmp_url = None
+        if rmp_data and rmp_data.get("id"):
+            rmp_url = generate_rmp_url(rmp_data["id"])
+
         # Create section ranking
         section_ranking = SectionRanking(
             crn=section_data.get("crn"),
@@ -370,8 +438,9 @@ def create_ranked_sections(course_code: str,
             section=section_data.get("section", ""),
             term=term,
             instructor_raw=instructor_raw,
-            instructor_normalized=identity.primary_name,
+            instructor_normalized=formatted_name,
             professor_id=identity.professor_id,
+            rmp_url=rmp_url,
             rating=rmp_data.get("rating") if rmp_data else None,
             difficulty=rmp_data.get("difficulty") if rmp_data else None,
             would_take_again=rmp_data.get("would_take_again") if rmp_data else None,

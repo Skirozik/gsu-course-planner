@@ -858,12 +858,17 @@ with tab1:
                                                     rank_emoji = f"#{section.rank}"
                                                     rank_color = "#666666"
 
-                                                # Section card
+                                                # Section card with clickable professor name
+                                                if section.rmp_url:
+                                                    instructor_display = f'<a href="{section.rmp_url}" target="_blank" style="color: #1f77b4; text-decoration: none;">{section.instructor_normalized}</a>'
+                                                else:
+                                                    instructor_display = section.instructor_normalized
+
                                                 st.markdown(f"""
                                                 <div style="background: linear-gradient(90deg, {rank_color}22 0%, {rank_color}11 100%);
                                                             padding: 0.75rem; border-radius: 8px; margin: 0.5rem 0;
                                                             border-left: 4px solid {rank_color};">
-                                                    <strong>{rank_emoji} Section {section.section}</strong> - {section.instructor_normalized}
+                                                    <strong>{rank_emoji} Section {section.section}</strong> - {instructor_display}
                                                 </div>
                                                 """, unsafe_allow_html=True)
 
