@@ -60,17 +60,41 @@ def generate_sample_sections(course_code: str, num_sections: int = 3) -> list:
 
     # Professor pools by department
     professor_pools = {
+        # Computer Science
         "CSC": ["Robert Robinson", "Sarah Chen", "David Kim", "Emily Rodriguez", "Daniel Taylor"],
+        "CSCI": ["Robert Robinson", "Sarah Chen", "David Kim", "Emily Rodriguez"],  # Alt CS code
+        "CS": ["David Joyner", "Monica Sweat", "Thad Starner", "Charles Isbell"],  # Georgia Tech
+
+        # Business & Information
         "CIS": ["Andrew King", "Rebecca Wright", "Matthew Adams", "Michelle Scott", "Joshua Green"],
+        "ITEC": ["Andrew King", "Rebecca Wright", "Ryan Carter", "Amanda Baker"],  # IT
+        "BUS": ["Rachel Parker", "Timothy Evans", "Nicholas Morris"],  # Business core
+        "BUSA": ["Rachel Parker", "Timothy Evans", "Nicholas Morris"],  # Business Administration
+
+        # Finance & Economics
         "FI": ["Christina Edwards", "William Turner", "Gregory Campbell", "Rachel Parker"],
+        "FINC": ["Christina Edwards", "William Turner", "Gregory Campbell"],  # Finance
+        "ECON": ["Stephanie Phillips", "Gregory Campbell", "Timothy Evans"],  # Economics
+
+        # Management & Marketing
         "MGT": ["Jonathan Collins", "Timothy Evans", "Nicholas Morris", "Samantha Stewart"],
+        "MGMT": ["Jonathan Collins", "Timothy Evans", "Nicholas Morris"],  # Management
         "MK": ["Samantha Stewart", "Brandon Perez", "Victoria Roberts"],
+        "MKTG": ["Samantha Stewart", "Brandon Perez", "Nicole Mitchell"],  # Marketing
+
+        # Accounting
         "ACCT": ["Victoria Roberts", "William Turner", "Lauren Nelson"],
-        "ECON": ["Stephanie Phillips", "Gregory Campbell", "Timothy Evans"],
+
+        # Math & Sciences
         "MATH": ["Robert Davis", "Nancy Clark", "Steven Hall", "Amy Allen", "Brian Young"],
+        "CHEM": ["Karen Walker", "John Lewis", "Brian Young"],  # Chemistry
+        "BIOL": ["George Rivera", "Helen Cooper", "Margaret Cook"],  # Biology
+        "MICB": ["George Rivera", "Richard Murphy", "Linda Bailey"],  # Microbiology
+
+        # Health Sciences
         "HS": ["Elizabeth Rogers", "Charles Reed", "Paul Morgan", "Barbara Bell"],
-        "BIOL": ["George Rivera", "Helen Cooper", "Margaret Cook"],
-        "CS": ["David Joyner", "Monica Sweat", "Thad Starner", "Charles Isbell"],
+        "HSC": ["Richard Murphy", "Linda Bailey", "Elizabeth Rogers"],  # Health Science Core
+        "NURS": ["Elizabeth Rogers", "Margaret Cook", "Barbara Bell", "Linda Bailey"],  # Nursing
     }
 
     # Get professor pool for this department, or use generic pool
