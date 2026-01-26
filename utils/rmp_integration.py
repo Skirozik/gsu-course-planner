@@ -27,9 +27,9 @@ class RateMyProfessorAPI:
 
     BASE_URL = "https://www.ratemyprofessors.com/graphql"
 
-    # GSU School ID on RateMyProfessors
+    # School IDs on RateMyProfessors (Base64 encoded)
     GSU_SCHOOL_ID = "U2Nob29sLTM2MA=="  # Georgia State University (School ID: 360)
-    GEORGIA_TECH_SCHOOL_ID = "U2Nob29sLTM1MQ=="  # Georgia Tech
+    GEORGIA_TECH_SCHOOL_ID = "U2Nob29sLTM2MQ=="  # Georgia Tech (School ID: 361)
 
     HEADERS = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",

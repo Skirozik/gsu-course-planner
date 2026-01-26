@@ -168,6 +168,116 @@ class CourseRecommender:
             logger.error(f"Unexpected error: {e}")
             return self._get_error_response(f"Error: {str(e)[:100]}")
     
+    def generate_course_explanation(
+        self,
+        course_code: str,
+        course_name: str,
+        student_data: Dict,
+        preferences: Dict,
+        available_courses: List[Dict],
+        degree_requirements: Dict
+    ) -> str:
+        """
+        Generate AI explanation for why a course was recommended
+
+        Args:
+            course_code: Course code (e.g., "CS 1332")
+            course_name: Course name (e.g., "Data Structures")
+            student_data: Student academic information
+            preferences: Student preferences
+            available_courses: List of available courses
+            degree_requirements: Degree requirements
+
+        Returns:
+            Formatted explanation string (2-3 bullet points)
+        """
+        try:
+            # Build explanation prompt
+            prompt = self._build_explanation_prompt(
+                course_code,
+                course_name,
+                student_data,
+                preferences,
+                available_courses,
+                degree_requirements
+            )
+
+            if not prompt:
+                return "Unable to generate explanation at this time."
+
+            # Call API with shorter timeout for explanations
+            response = self.client.chat.completions.create(
+                model=self.DEFAULT_MODEL,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=300,  # Shorter for concise explanations
+                temperature=0.5,  # Lower temperature for more focused responses
+                timeout=15
+            )
+
+            explanation = response.choices[0].message.content.strip()
+            logger.info(f"✅ Generated explanation for {course_code}")
+            return explanation
+
+        except Exception as e:
+            logger.error(f"Error generating explanation: {e}")
+            return "Unable to generate explanation at this time. This course was recommended based on your academic progress and degree requirements."
+
+    def _build_explanation_prompt(
+        self,
+        course_code: str,
+        course_name: str,
+        student_data: Dict,
+        preferences: Dict,
+        available_courses: List[Dict],
+        degree_requirements: Dict
+    ) -> Optional[str]:
+        """Build prompt for course explanation"""
+        try:
+            # Find course info from available courses
+            course_info = next(
+                (c for c in available_courses if c.get('course_code') == course_code),
+                None
+            )
+
+            # Get prerequisites from requirements
+            required_courses = degree_requirements.get("required_courses", [])
+            is_required = any(
+                course_code in req.get("courses", [])
+                for req in required_courses
+            )
+
+            # Format completed courses
+            completed = [c.get('course_code', '') for c in student_data.get('completed_courses', [])]
+            completed_str = ", ".join(completed[:10]) if completed else "None"
+
+            prompt = f"""Explain in 2-3 concise bullet points why {course_code} ({course_name}) was recommended to this student.
+
+STUDENT BACKGROUND:
+- Completed courses: {completed_str}
+- GPA: {student_data.get('gpa', 'N/A')}
+- Credits earned: {student_data.get('total_credits', 0)}
+- Major: {student_data.get('major', 'Computer Science')}
+
+COURSE STATUS:
+- Required course: {"Yes" if is_required else "No (elective)"}
+- Credits: {course_info.get('credits', 3) if course_info else 3}
+
+STUDENT PREFERENCES:
+- Career goals: {preferences.get('career_goals', 'Not specified')}
+
+Focus on:
+1. Prerequisites the student has met that make them ready for this course
+2. How this course fits into their degree requirements
+3. What future courses or opportunities this unlocks
+
+Keep it brief, specific, and helpful. Use bullet points starting with •."""
+
+            return prompt
+
+        except Exception as e:
+            logger.error(f"Error building explanation prompt: {e}")
+            return None
+
     def _call_api(self, prompt: str) -> Optional[str]:
         """Call OpenAI API with fallback model"""
         for model in [self.model, self.FALLBACK_MODEL]:

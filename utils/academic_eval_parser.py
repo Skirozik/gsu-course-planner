@@ -165,11 +165,12 @@ def parse_completed_courses(text: str) -> List[Dict]:
 
     # Pattern for course entries: DEPT #### COURSE NAME GRADE CREDITS TERM
     # Example: CSC 1301 PRINCIPLES OF COMPUTER SCI I B 4 Fall Semester 2023
+    # Note: In actual GSU PDFs, there's often NO SPACE between credits and term (e.g., "3Fall")
     course_pattern = re.compile(
         r'([A-Z]{2,4})\s+(\d{4}[A-Z]?)\s+'  # Course code (e.g., CSC 1301, BIOL 1103L)
         r'([A-Z][A-Z\s&\-:]+?)\s+'           # Course name
-        r'([A-DF][+-]?|W|NA)\s+'             # Grade
-        r'\(?(\d+)\)?\s+'                     # Credits (may be in parentheses for in-progress)
+        r'([A-DF][+-]?|T|W|NA)\s+'           # Grade (added T for transfer credits)
+        r'\(?(\d+)\)?\s*'                     # Credits (may be in parentheses, OPTIONAL space after)
         r'((?:Fall|Spring|Summer)\s+Semester\s+\d{4})',  # Term
         re.IGNORECASE
     )
@@ -180,7 +181,7 @@ def parse_completed_courses(text: str) -> List[Dict]:
         name = match.group(3).strip()
         grade = match.group(4).upper()
         credits = int(match.group(5))
-        term = match.group(6)
+        term = match.group(6).replace('\n', ' ').strip()  # Clean up newlines in term
 
         # Skip if grade is NA (in-progress) or W (withdrawn)
         if grade not in ['NA', 'W', '-W']:
@@ -361,12 +362,13 @@ def parse_requirements_summary(text: str) -> Dict:
     return summary
 
 
-def get_next_semester_recommendations(eval_data: Dict) -> Dict:
+def get_next_semester_recommendations(eval_data: Dict, school: str = "Georgia State University") -> Dict:
     """
     Analyze the evaluation data and recommend courses for next semester
 
     Args:
         eval_data: Parsed academic evaluation data
+        school: School name (for course code formatting)
 
     Returns:
         Dictionary with recommended courses and reasoning
@@ -381,21 +383,35 @@ def get_next_semester_recommendations(eval_data: Dict) -> Dict:
         "prerequisites_needed": []
     }
 
-    # Define prerequisite chains for CS courses
-    prerequisites = {
-        "CSC 2720": ["CSC 1302"],  # Data Structures requires CS II
-        "CSC 3210": ["CSC 2720"],  # Computer Org requires Data Structures
-        "CSC 3320": ["CSC 2720"],  # System Level Programming requires Data Structures
-        "CSC 3350": ["CSC 2720"],  # Software Development requires Data Structures
-        "CSC 4320": ["CSC 3320"],  # Operating Systems requires System Level
-        "CSC 4330": ["CSC 3320"],  # Programming Languages requires System Level
-        "CSC 4351": ["CSC 3350"],  # Capstone I requires Software Dev
-        "CSC 4352": ["CSC 4351"],  # Capstone II requires Capstone I
-        "CSC 4520": ["CSC 2720", "MATH 2420"],  # Algorithms requires DS and Discrete Math
-        "MATH 2212": ["MATH 2211"],  # Calc II requires Calc I
-        "MATH 2641": ["MATH 2211"],  # Linear Algebra requires Calc I
-        "MATH 3020": ["MATH 2211"],  # Prob & Stats requires Calc I
-    }
+    # Define prerequisite chains for CS courses (school-specific)
+    if "tech" in school.lower():
+        # Georgia Tech course codes (CS XXXX)
+        prerequisites = {
+            "CS 1332": ["CS 1331"],  # Data Structures requires OOP
+            "CS 2340": ["CS 1332"],  # Objects & Design requires Data Structures
+            "CS 3510": ["CS 1332", "MATH 2550"],  # Design & Analysis requires DS and Discrete Math
+            "CS 3600": ["CS 1332"],  # Intro to AI requires Data Structures
+            "CS 4400": ["CS 1332"],  # Database Systems requires Data Structures
+            "CS 4510": ["CS 3510"],  # Automata requires Design & Analysis
+            "MATH 1554": ["MATH 1552"],  # Linear Algebra requires Integral Calculus
+            "MATH 2550": ["MATH 1552"],  # Discrete Math requires Integral Calculus
+        }
+    else:
+        # Georgia State University course codes (CSC XXXX)
+        prerequisites = {
+            "CSC 2720": ["CSC 1302"],  # Data Structures requires CS II
+            "CSC 3210": ["CSC 2720"],  # Computer Org requires Data Structures
+            "CSC 3320": ["CSC 2720"],  # System Level Programming requires Data Structures
+            "CSC 3350": ["CSC 2720"],  # Software Development requires Data Structures
+            "CSC 4320": ["CSC 3320"],  # Operating Systems requires System Level
+            "CSC 4330": ["CSC 3320"],  # Programming Languages requires System Level
+            "CSC 4351": ["CSC 3350"],  # Capstone I requires Software Dev
+            "CSC 4352": ["CSC 4351"],  # Capstone II requires Capstone I
+            "CSC 4520": ["CSC 2720", "MATH 2420"],  # Algorithms requires DS and Discrete Math
+            "MATH 2212": ["MATH 2211"],  # Calc II requires Calc I
+            "MATH 2641": ["MATH 2211"],  # Linear Algebra requires Calc I
+            "MATH 3020": ["MATH 2211"],  # Prob & Stats requires Calc I
+        }
 
     for req in eval_data["required_courses"]:
         for course in req["courses"]:

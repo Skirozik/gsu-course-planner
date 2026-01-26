@@ -95,7 +95,7 @@ def _extract_student_info(text: str) -> Dict:
             info["student_id"] = id_match.group(1).strip()
 
     # Extract degree
-    degree_match = re.search(r'Degree\s*(BS in [A-Za-z\s]+)', text)
+    degree_match = re.search(r'Degree\s*(BS in [A-Za-z\s]+?)(?:Audit|Program|Major|$)', text)
     if degree_match:
         info["degree"] = degree_match.group(1).strip()
 
@@ -105,12 +105,12 @@ def _extract_student_info(text: str) -> Dict:
         info["major"] = major_match.group(1).strip()
 
     # Extract concentration (format: "Concentration BSCS: Media-People")
-    concentration_match = re.search(r'Concentration\s+(BSCS:[^\s]+(?:\s+[^\s]+)?)', text)
+    concentration_match = re.search(r'Concentration\s+(BSCS:[^\n]+?)(?=\s*Program|Major|College|Degree|$)', text)
     if concentration_match:
         info["concentration"] = concentration_match.group(1).strip()
 
     # Extract college
-    college_match = re.search(r'College\s+(College of [A-Za-z\s]+)', text)
+    college_match = re.search(r'College\s+(College of [A-Za-z\s]+?)(?=\s*BSCS|Program|Major|Degree|Concentration|$)', text)
     if college_match:
         info["college"] = college_match.group(1).strip()
 
@@ -222,37 +222,60 @@ def _extract_required_courses(text: str) -> List[Dict]:
     """
     required = []
 
-    # Find all "Still needed:" entries
-    # Pattern matches: "Still needed:" followed by requirement text until next major keyword
-    pattern = r'Still needed:([^A-Z]{0,5})(\d+)\s+Class(?:es)?\s+in\s+([A-Z]{2,4})\s+([\d\s]+?(?:or\s+[\d]+)*?)(?=[A-Z][A-Z]|Still needed|In-progress|Over The Limit|$)'
+    # Pattern 1: Simple requirements like "Still needed:1 Class in CS 1100"
+    # This matches: Still needed:N Class(es) in DEPT NUM
+    simple_pattern = r'Still needed:(\d+)\s+Class(?:es)?\s+in\s+([A-Z]{2,5})\s+(\d{4})'
 
-    for match in re.finditer(pattern, text):
-        num_classes = int(match.group(2))
-        dept = match.group(3)
-        numbers_text = match.group(4).strip()
+    for match in re.finditer(simple_pattern, text):
+        num_classes = int(match.group(1))
+        dept = match.group(2)
+        course_num = match.group(3)
 
-        # Extract all course numbers (handle "CS 2340" or "3451 or 4455 or 4460")
-        numbers = re.findall(r'\d{4}', numbers_text)
-
-        if numbers:
-            course_codes = [f"{dept} {num}" for num in numbers]
-            required.append({
-                "courses": course_codes,
-                "credits": num_classes * 3,  # Assume 3 credits per class
-                "is_choice": len(numbers) > 1,
-                "is_elective": False
-            })
-
-    # Also look for complex requirements like "Choose from 1 of the following:"
-    complex_pattern = r'Still needed:([^A-Z]{0,5})(Choose from \d+ of the following:|You must complete all of the following:)'
-
-    for match in re.finditer(complex_pattern, text):
-        requirement_text = match.group(2).strip()
         required.append({
-            "courses": [requirement_text],
-            "credits": 3,  # Default
+            "courses": [f"{dept} {course_num}"],
+            "credits": num_classes * 3,  # Assume 3 credits per class
+            "is_choice": False,
+            "is_elective": False
+        })
+
+    # Pattern 2: Multiple choice requirements like "Still needed:1 Class in CS 2050 or 2051"
+    # This matches: Still needed:N Class(es) in DEPT NUM or NUM or NUM
+    choice_pattern = r'Still needed:(\d+)\s+Class(?:es)?\s+in\s+([A-Z]{2,5})\s+(\d{4}(?:\s+or\s+\d{4})+)'
+
+    for match in re.finditer(choice_pattern, text):
+        num_classes = int(match.group(1))
+        dept = match.group(2)
+        numbers_text = match.group(3)
+
+        # Extract all course numbers
+        numbers = re.findall(r'\d{4}', numbers_text)
+        course_codes = [f"{dept} {num}" for num in numbers]
+
+        required.append({
+            "courses": course_codes,
+            "credits": num_classes * 3,
             "is_choice": True,
             "is_elective": False
+        })
+
+    # Pattern 3: Complex multi-course requirements like "3 Classes in CS 3451 or 4455 or 4460"
+    # Where only first course has dept prefix
+    multi_pattern = r'Still needed:(\d+)\s+Classes\s+in\s+([A-Z]{2,5})\s+(\d{4}(?:\s+or\s+\d{4})+)'
+
+    for match in re.finditer(multi_pattern, text):
+        num_classes = int(match.group(1))
+        dept = match.group(2)
+        numbers_text = match.group(3)
+
+        # Extract all course numbers
+        numbers = re.findall(r'\d{4}', numbers_text)
+        course_codes = [f"{dept} {num}" for num in numbers]
+
+        required.append({
+            "courses": course_codes,
+            "credits": num_classes * 3,
+            "is_choice": True,
+            "is_elective": True  # Multiple classes to choose = elective
         })
 
     return required

@@ -17,6 +17,8 @@ from utils.rmp_integration import get_rmp_api, enrich_courses_with_rmp, format_r
 from utils.export_utils import generate_pdf_schedule, generate_ics_calendar, generate_text_schedule
 from utils.section_recommender import get_ranked_sections
 from utils.gsu_banner_api import get_gsu_sections
+from utils.gatech_banner_api import get_gatech_sections
+from utils.gatech_parser import parse_gatech_degreeworks
 
 # Cached PDF parsing to avoid re-parsing the same file multiple times
 @st.cache_data
@@ -387,6 +389,13 @@ if 'selected_school' not in st.session_state:
 if 'last_file_hash' not in st.session_state:
     st.session_state.last_file_hash = None
 
+# Initialize explanation tracking (limit to 5 per session for cost control)
+if 'explanation_count' not in st.session_state:
+    st.session_state.explanation_count = 0
+
+if 'explanations_cache' not in st.session_state:
+    st.session_state.explanations_cache = {}
+
 # Initialize catalog loader
 catalog_loader = get_catalog_loader()
 
@@ -431,933 +440,1004 @@ with tab1:
         with col1:
             st.markdown("<div class='section-header'>📄 Step 2: Upload Your Academic Evaluation</div>", unsafe_allow_html=True)
 
-        # Show school-specific instructions
-        if st.session_state.selected_school == "Georgia State University":
-            st.markdown("""
-            <div class="info-box">
-            <strong>How to get your GSU Academic Evaluation:</strong><br>
-            1. Log into <strong>PAWS</strong> (paws.gsu.edu)<br>
-            2. Go to <strong>Student</strong> tab<br>
-            3. Click <strong>DegreeWorks</strong><br>
-            4. Click <strong>Print/Export</strong> and save as PDF
-            </div>
-            """, unsafe_allow_html=True)
-        else:  # Georgia Tech
-            st.markdown("""
-            <div class="info-box">
-            <strong>How to get your Georgia Tech Academic Evaluation:</strong><br>
-            1. Log into <strong>OSCAR</strong> (oscar.gatech.edu)<br>
-            2. Go to <strong>Student Services</strong><br>
-            3. Click <strong>Degree Works</strong><br>
-            4. Click <strong>Print/Export</strong> and save as PDF
-            </div>
-            """, unsafe_allow_html=True)
-
-        # File uploader
-        uploaded_file = st.file_uploader(
-            "Upload your DegreeWorks PDF",
-            type=['pdf'],
-            help="Your academic evaluation showing completed and required courses"
-        )
-
-        if uploaded_file:
-            # Detect if this is a new file upload
-            import hashlib
-            file_content = uploaded_file.read()
-            file_hash = hashlib.md5(file_content).hexdigest()
-
-            # Check if this is a different file than before
-            if file_hash != st.session_state.last_file_hash:
-                # New file detected - reset all state
-                st.session_state.last_file_hash = file_hash
-                st.session_state.processing_state = 'idle'
-                st.session_state.ai_recommendations = None
-                st.session_state.selected_major = None
-                st.session_state.selected_school = None
-
-                st.markdown("""
-                <div class="success-box">
-                ✅ <strong>New file detected!</strong><br>
-                Analyzing your academic evaluation...
-                </div>
-                """, unsafe_allow_html=True)
-
-                # Parse the academic evaluation (route to correct parser based on school)
-                with st.spinner("📊 Analyzing your academic evaluation..."):
-                    try:
-                        # Route to correct parser based on selected school
-                        if st.session_state.selected_school == "Georgia Tech":
-                            st.session_state.eval_data = parse_gatech_degreeworks(file_content)
-                        else:  # Georgia State University
-                            st.session_state.eval_data = parse_academic_eval_cached(file_content)
-
-                    except Exception as e:
-                        st.error(f"Error parsing file: {str(e)}")
-                        st.error(f"Please make sure you uploaded the correct DegreeWorks PDF for {st.session_state.selected_school}")
-                        st.session_state.eval_data = None
-                        st.session_state.processing_state = 'error'
-            else:
-                # Same file as before
+            # Show school-specific instructions
+            if st.session_state.selected_school == "Georgia State University":
                 st.markdown("""
                 <div class="info-box">
-                ✅ <strong>File loaded!</strong>
+                <strong>How to get your GSU Academic Evaluation:</strong><br>
+                1. Log into <strong>PAWS</strong> (paws.gsu.edu)<br>
+                2. Go to <strong>Student</strong> tab<br>
+                3. Click <strong>DegreeWorks</strong><br>
+                4. Click <strong>Print/Export</strong> and save as PDF
+                </div>
+                """, unsafe_allow_html=True)
+            else:  # Georgia Tech
+                st.markdown("""
+                <div class="info-box">
+                <strong>How to get your Georgia Tech Academic Evaluation:</strong><br>
+                1. Log into <strong>OSCAR</strong> (oscar.gatech.edu)<br>
+                2. Go to <strong>Student Services</strong><br>
+                3. Click <strong>Degree Works</strong><br>
+                4. Click <strong>Print/Export</strong> and save as PDF
                 </div>
                 """, unsafe_allow_html=True)
 
-            # Display eval data if available
-            if st.session_state.eval_data:
-                eval_data = st.session_state.eval_data
+            # File uploader
+            uploaded_file = st.file_uploader(
+                "Upload your DegreeWorks PDF",
+                type=['pdf'],
+                help="Your academic evaluation showing completed and required courses"
+            )
 
-                # Show parsed info with better layout
-                with st.expander("📋 Your Academic Summary", expanded=True):
-                    info = eval_data["student_info"]
+            if uploaded_file:
+                # Detect if this is a new file upload
+                import hashlib
+                file_content = uploaded_file.read()
+                file_hash = hashlib.md5(file_content).hexdigest()
 
-                    # Student info cards
-                    st.markdown("<div class='subsection-header'>👤 Student Information</div>", unsafe_allow_html=True)
-                    metric_cols = st.columns(4)
+                # Check if this is a different file than before
+                if file_hash != st.session_state.last_file_hash:
+                    # New file detected - reset processing state
+                    st.session_state.last_file_hash = file_hash
+                    st.session_state.processing_state = 'idle'
+                    st.session_state.ai_recommendations = None
+                    # DON'T reset selected_major or selected_school - they're needed for parsing!
+                    # selected_school determines which parser to use
+                    # selected_major might be detected from PDF
 
-                    with metric_cols[0]:
-                        st.markdown(f"""
-                        <div class="metric-card">
-                        <strong>Name</strong><br>
-                        {info['student_name']}
-                        </div>
-                        """, unsafe_allow_html=True)
+                    st.markdown("""
+                    <div class="success-box">
+                    ✅ <strong>New file detected!</strong><br>
+                    Analyzing your academic evaluation...
+                    </div>
+                    """, unsafe_allow_html=True)
 
-                    with metric_cols[1]:
-                        st.markdown(f"""
-                        <div class="metric-card">
-                        <strong>Major</strong><br>
-                        {info['major']}
-                        </div>
-                        """, unsafe_allow_html=True)
+                    # Parse the academic evaluation (route to correct parser based on school)
+                    with st.spinner("📊 Analyzing your academic evaluation..."):
+                        try:
+                            # Route to correct parser based on selected school
+                            if st.session_state.selected_school == "Georgia Tech":
+                                st.session_state.eval_data = parse_gatech_degreeworks(file_content)
+                            else:  # Georgia State University
+                                st.session_state.eval_data = parse_academic_eval_cached(file_content)
 
-                    with metric_cols[2]:
-                        st.markdown(f"""
-                        <div class="metric-card">
-                        <strong>GPA</strong><br>
-                        {info['gpa']:.2f}
-                        </div>
-                        """, unsafe_allow_html=True)
+                        except Exception as e:
+                            st.error(f"Error parsing file: {str(e)}")
+                            st.error(f"Please make sure you uploaded the correct DegreeWorks PDF for {st.session_state.selected_school}")
+                            st.session_state.eval_data = None
+                            st.session_state.processing_state = 'error'
+                else:
+                    # Same file as before
+                    st.markdown("""
+                    <div class="info-box">
+                    ✅ <strong>File loaded!</strong>
+                    </div>
+                    """, unsafe_allow_html=True)
 
-                    with metric_cols[3]:
-                        progress_pct = (info['credits_applied'] / info['credits_required']) * 100
-                        st.markdown(f"""
-                        <div class="metric-card">
-                        <strong>Progress</strong><br>
-                        {progress_pct:.1f}%
-                        </div>
-                        """, unsafe_allow_html=True)
+                # Display eval data if available
+                if st.session_state.eval_data:
+                    eval_data = st.session_state.eval_data
 
-                    # Progress bar
-                    st.markdown("<div class='subsection-header'>📈 Credits Progress</div>", unsafe_allow_html=True)
-                    st.progress(info['credits_applied'] / info['credits_required'])
-                    st.markdown(f"**{info['credits_applied']}/{info['credits_required']} credits** ({progress_pct:.1f}%)")
+                    # Show parsed info with better layout
+                    with st.expander("📋 Your Academic Summary", expanded=True):
+                        info = eval_data["student_info"]
 
-                    # Show completed courses with better styling
-                    with st.expander(f"✅ Completed Courses ({len(eval_data['completed_courses'])})"):
-                        st.markdown("<div class='subsection-header'>Successfully Completed</div>", unsafe_allow_html=True)
-                        for course in eval_data["completed_courses"]:
+                        # Student info cards
+                        st.markdown("<div class='subsection-header'>👤 Student Information</div>", unsafe_allow_html=True)
+                        metric_cols = st.columns(4)
+
+                        with metric_cols[0]:
                             st.markdown(f"""
-                            <div class="course-card">
-                            <strong>{course['course_code']}</strong> — {course['course_name']}<br>
-                            <small>Grade: <span style="color: #0039A6; font-weight: bold;">{course['grade']}</span> | 
-                            Credits: <span style="color: #0039A6; font-weight: bold;">{course['credits']}</span> | 
-                            Completed: {course['term']}</small>
+                            <div class="metric-card">
+                            <strong>Name</strong><br>
+                            {info['student_name']}
                             </div>
                             """, unsafe_allow_html=True)
 
-                    # Show in-progress courses
-                    if eval_data["in_progress_courses"]:
-                        with st.expander(f"📚 Currently Enrolled ({len(eval_data['in_progress_courses'])})"):
-                            st.markdown("<div class='subsection-header'>Currently Taking</div>", unsafe_allow_html=True)
-                            for course in eval_data["in_progress_courses"]:
-                                st.markdown(f"""
-                                <div class="course-card" style="border-left-color: #FF9800;">
-                                <strong>{course['course_code']}</strong> — {course['course_name']}<br>
-                                <small>Credits: <span style="color: #FF9800; font-weight: bold;">{course['credits']}</span> | 
-                                Term: {course['term']}</small>
-                                </div>
-                                """, unsafe_allow_html=True)
-
-                    # Show required courses
-                    with st.expander(f"📝 Courses Still Needed ({len(eval_data['required_courses'])})"):
-                        st.markdown("<div class='subsection-header'>Remaining Requirements</div>", unsafe_allow_html=True)
-                        for req in eval_data["required_courses"]:
-                            if req.get("is_elective"):
-                                st.markdown(f"""
-                                <div class="course-card" style="border-left-color: #4CAF50;">
-                                📋 <strong>{req['credits']} credits</strong> of electives<br>
-                                <small>{req['courses'][0]}</small>
-                                </div>
-                                """, unsafe_allow_html=True)
-                            elif req.get("is_choice"):
-                                st.write(f"- {req['credits']} credits: {' OR '.join(req['courses'])}")
-                            else:
-                                st.write(f"- **{req['courses'][0]}** ({req['credits']} credits)")
-
-        # Major Detection Display - After PDF is parsed
-        if st.session_state.eval_data:
-            st.markdown("---")
-            detected_major = st.session_state.eval_data["student_info"]["major"]
-
-            if detected_major:
-                st.markdown(f"""
-                <div class="success-box">
-                ✅ <strong>Detected Major from PDF:</strong> {detected_major}<br>
-                <small>You can confirm or change this in the preferences form below.</small>
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.markdown("""
-                <div class="warning-box">
-                ⚠️ <strong>Major not automatically detected</strong><br>
-                <small>Please select your major in the preferences form below.</small>
-                </div>
-                """, unsafe_allow_html=True)
-
-        st.markdown("---")
-
-        st.subheader("🎯 Step 2: Your Preferences")
-
-        # Student preferences form
-        with st.form("preferences_form"):
-            # Select school first
-            available_schools = catalog_loader.get_available_schools()
-            selected_school = st.selectbox(
-                "Select Your School",
-                options=available_schools,
-                help="Choose your institution to get accurate course recommendations"
-            )
-
-            # Select major based on school
-            available_majors = catalog_loader.get_majors_for_school(selected_school)
-
-            # Check if we already have major from PDF
-            if st.session_state.eval_data and st.session_state.eval_data["student_info"].get("major"):
-                # Major already known from uploaded PDF - display as read-only
-                confirmed_major = st.session_state.eval_data["student_info"]["major"]
-                st.markdown(f"**📚 Your Major:** {confirmed_major}")
-                st.caption("Detected from your DegreeWorks file")
-                selected_major = confirmed_major
-            else:
-                # No major in PDF - ask user to select
-                selected_major = st.selectbox(
-                    "Select Your Major",
-                    options=available_majors,
-                    help="Choose your degree program to get tailored recommendations"
-                )
-
-            # Note: selected_major and selected_school are local variables
-            # They will only be saved to session state when form is submitted
-
-            # Career goals
-            career_goals = st.text_area(
-                "Career Goals & Interests (Optional)",
-                placeholder="E.g., I want to work in data science, interested in AI/ML, cybersecurity...",
-                height=80
-            )
-
-            # Work schedule
-            has_job = st.checkbox("I have a job/significant time commitments")
-
-            # Preferred class times
-            preferred_times = st.multiselect(
-                "Preferred Class Times",
-                ["Morning (8am-12pm)", "Afternoon (12pm-5pm)", "Evening (5pm+)", "No preference"],
-                default=["No preference"]
-            )
-
-            # Course load
-            max_courses = st.slider(
-                "Maximum Courses Per Semester",
-                min_value=3,
-                max_value=6,
-                value=4,
-                help="How many courses do you want to take?"
-            )
-
-            # Difficulty preference
-            difficulty_pref = st.radio(
-                "Semester Difficulty Preference",
-                ["Light (easier courses)", "Balanced", "Challenging (harder courses)"],
-                index=1,
-                horizontal=True
-            )
-
-            # Specific preferences
-            col_a, col_b = st.columns(2)
-            with col_a:
-                prioritize_courses = st.text_input(
-                    "Courses to Prioritize",
-                    placeholder="E.g., CSC 3210, MATH 2641"
-                )
-            with col_b:
-                avoid_courses = st.text_input(
-                    "Courses to Avoid",
-                    placeholder="E.g., early morning classes"
-                )
-
-            # Submit button
-            submit_button = st.form_submit_button("🚀 Generate My Schedule", use_container_width=True)
-
-    with col2:
-        st.subheader("📅 Your Personalized Schedule")
-
-        if submit_button and st.session_state.eval_data:
-            # NOW save the form values to session state (after submission)
-            st.session_state.selected_major = selected_major
-            st.session_state.selected_school = selected_school
-            st.session_state.processing_state = 'processing'
-
-            eval_data = st.session_state.eval_data
-
-            try:
-                # Get recommendations based on prerequisites
-                recs = get_next_semester_recommendations(eval_data)
-
-                # Build preferences dict
-                preferences = {
-                    "career_goals": career_goals,
-                    "has_job": has_job,
-                    "preferred_times": preferred_times,
-                    "max_courses": max_courses,
-                    "difficulty_preference": difficulty_pref,
-                    "prioritize_courses": prioritize_courses,
-                    "avoid_courses": avoid_courses
-                }
-
-                # Try to get AI recommendations
-                with st.spinner("🤖 AI is analyzing your evaluation and generating recommendations..."):
-                    try:
-                        from utils.llm_integration import CourseRecommender
-
-                        recommender = CourseRecommender()
-
-                        # Prepare data for LLM
-                        student_data = {
-                            "student_name": eval_data["student_info"]["student_name"],
-                            "gpa": eval_data["student_info"]["gpa"],
-                            "total_credits": eval_data["student_info"]["credits_applied"],
-                            "credits_required": eval_data["student_info"]["credits_required"],
-                            "completed_courses": eval_data["completed_courses"],
-                            "in_progress_courses": eval_data["in_progress_courses"]
-                        }
-
-                        # Get courses that can be taken (prerequisites met)
-                        available_courses = recs["available_courses"]
-                        # Degree requirements
-                        degree_requirements = {
-                            "required_courses": eval_data["required_courses"],
-                            "summary": eval_data["requirements_summary"]
-                        }
-
-                        ai_result = recommender.generate_schedule(
-                            student_data=student_data,
-                            preferences=preferences,
-                            available_courses=available_courses,
-                            degree_requirements=degree_requirements,
-                            allow_retakes=False
-                        )
-                        st.session_state.ai_recommendations = ai_result
-                        use_ai = True
-
-                    except Exception as e:
-                        st.warning(f"AI recommendations unavailable: {str(e)}")
-                        st.info("Showing basic recommendations based on prerequisites.")
-                        use_ai = False
-
-                # Mark as complete if we got here
-                st.session_state.processing_state = 'complete'
-
-            except Exception as e:
-                st.error(f"❌ Error generating schedule: {str(e)}")
-                import traceback
-                st.error(f"Debug info: {traceback.format_exc()}")
-                st.session_state.processing_state = 'error'
-                use_ai = False
-
-            # Only show success and results if no error occurred
-            if st.session_state.processing_state == 'complete':
-                st.success("✅ Schedule Generated!")
-
-                # Display student info summary
-                info = eval_data["student_info"]
-                st.markdown(f"#### 🎓 Recommendations for {info['student_name']}")
-
-                # Show AI recommendations or fallback
-                if use_ai and st.session_state.ai_recommendations:
-                    ai_recs = st.session_state.ai_recommendations
-
-                    if ai_recs.get("recommended_courses"):
-                        st.markdown("##### 📋 Recommended Courses")
-
-                        # Get recommended courses
-                        recommended_courses = ai_recs["recommended_courses"][:max_courses]
-
-                        # Enrich courses with RMP data
-                        try:
-                            school_name = info.get('school', 'Georgia State University')
-                            enriched_courses = enrich_courses_with_rmp(recommended_courses, school_name)
-                        except Exception as e:
-                            st.warning(f"⚠️ Rate My Professor data temporarily unavailable")
-                            enriched_courses = recommended_courses
-
-                        for course in enriched_courses:
-                            with st.container():
-                                # Course header
-                                col1, col2 = st.columns([3, 1])
-                                with col1:
-                                    st.markdown(f"""
-                                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                                                padding: 1rem; border-radius: 10px; margin: 0.5rem 0;">
-                                        <h4 style="color: white; margin: 0;">
-                                            {course.get('course_code', 'N/A')} - {course.get('course_name', 'N/A')}
-                                        </h4>
-                                    </div>
-                                    """, unsafe_allow_html=True)
-
-                                with col2:
-                                    difficulty = course.get('difficulty', 'Medium')
-                                    if difficulty.lower() == 'easy':
-                                        diff_color = "#28a745"
-                                        diff_emoji = "😊"
-                                    elif difficulty.lower() == 'hard':
-                                        diff_color = "#dc3545"
-                                        diff_emoji = "💪"
-                                    else:
-                                        diff_color = "#ffc107"
-                                        diff_emoji = "📚"
-
-                                    st.markdown(f"""
-                                    <div style="background: {diff_color}; color: white;
-                                                padding: 0.5rem; border-radius: 8px; text-align: center;">
-                                        <strong>{diff_emoji} {difficulty}</strong>
-                                    </div>
-                                    """, unsafe_allow_html=True)
-
-                                # Course details
-                                col_a, col_b = st.columns(2)
-
-                                with col_a:
-                                    st.write(f"**📝 Reason:** {course.get('reason', 'Required for major')}")
-                                    credits = course.get('credits', 3)
-                                    st.write(f"**⭐ Credits:** {credits}")
-
-                                with col_b:
-                                    # RMP ratings
-                                    rmp_data = course.get('rmp_data')
-                                    if rmp_data:
-                                        rating = rmp_data.get('rating')
-                                        difficulty_rmp = rmp_data.get('difficulty')
-                                        num_ratings = rmp_data.get('num_ratings', 0)
-
-                                        if rating:
-                                            rating_emoji = "🌟" if rating >= 4.5 else "⭐" if rating >= 4.0 else "✨" if rating >= 3.5 else "💫"
-                                            st.write(f"**👨‍🏫 Professor Rating:** {rating_emoji} {rating}/5.0")
-
-                                        if difficulty_rmp:
-                                            diff_rmp_emoji = "😊" if difficulty_rmp <= 2.0 else "😐" if difficulty_rmp <= 3.0 else "😰" if difficulty_rmp <= 4.0 else "💀"
-                                            st.write(f"**🎯 Prof Difficulty:** {diff_rmp_emoji} {difficulty_rmp}/5.0")
-
-                                        if num_ratings:
-                                            st.caption(f"📊 Based on {num_ratings} reviews")
-                                    else:
-                                        professor = course.get('professor', 'TBA')
-                                        st.write(f"**👨‍🏫 Professor:** {professor}")
-                                        if professor.lower() not in ['tba', 'staff', 'tbd']:
-                                            st.caption("🔍 Looking up rating...")
-
-                                # Section rankings (NEW FEATURE!)
-                                with st.expander("📊 Available Sections (Ranked by Professor Quality)"):
-                                    st.caption("Sections are ranked using Rate My Professor data - best professors first!")
-
-                                    # Get real sections from GSU Banner API
-                                    course_code = course.get('course_code', '')
-                                    if course_code:
-                                        try:
-                                            # Get real sections from Banner
-                                            sample_sections = get_gsu_sections(course_code)
-
-                                            # Check if sections were found
-                                            if not sample_sections:
-                                                st.info(f"ℹ️ No sections found for {course_code} in the current term. This course may not be offered this semester.")
-                                                continue
-
-                                            # Rank sections
-                                            school_name = info.get('school', 'Georgia State University')
-                                            ranked_sections = get_ranked_sections(
-                                                course_code=course_code,
-                                                sections_data=sample_sections,
-                                                school=school_name
-                                            )
-
-                                            # Display ranked sections
-                                            for section in ranked_sections[:3]:  # Show top 3
-                                                # Rank badge
-                                                if section.rank == 1:
-                                                    rank_emoji = "🥇"
-                                                    rank_color = "#FFD700"
-                                                elif section.rank == 2:
-                                                    rank_emoji = "🥈"
-                                                    rank_color = "#C0C0C0"
-                                                elif section.rank == 3:
-                                                    rank_emoji = "🥉"
-                                                    rank_color = "#CD7F32"
-                                                else:
-                                                    rank_emoji = f"#{section.rank}"
-                                                    rank_color = "#666666"
-
-                                                # Section card with clickable professor name
-                                                if section.rmp_url:
-                                                    instructor_display = f'<a href="{section.rmp_url}" target="_blank" style="color: #1f77b4; text-decoration: none;">{section.instructor_normalized}</a>'
-                                                else:
-                                                    instructor_display = section.instructor_normalized
-
-                                                st.markdown(f"""
-                                                <div style="background: linear-gradient(90deg, {rank_color}22 0%, {rank_color}11 100%);
-                                                            padding: 0.75rem; border-radius: 8px; margin: 0.5rem 0;
-                                                            border-left: 4px solid {rank_color};">
-                                                    <strong>{rank_emoji} Section {section.section}</strong> - {instructor_display}
-                                                </div>
-                                                """, unsafe_allow_html=True)
-
-                                                # Section details
-                                                col_s1, col_s2 = st.columns(2)
-
-                                                with col_s1:
-                                                    if section.time:
-                                                        st.caption(f"🕐 {section.time}")
-                                                    if section.location:
-                                                        st.caption(f"📍 {section.location}")
-
-                                                with col_s2:
-                                                    if section.rating:
-                                                        rating_emoji_s = "🌟" if section.rating >= 4.5 else "⭐" if section.rating >= 4.0 else "✨" if section.rating >= 3.5 else "💫"
-                                                        st.caption(f"{rating_emoji_s} {section.rating}/5.0 ({section.num_reviews} reviews)")
-                                                        st.caption(f"📊 Quality Score: {section.score}")
-                                                    else:
-                                                        st.caption("⚠️ No RMP data")
-
-                                            # Show note about fallback
-                                            if len(ranked_sections) > 3:
-                                                st.info(f"💡 **Tip:** If the top section fills, try Section {ranked_sections[1].section} next!")
-
-                                        except Exception as e:
-                                            st.warning("Section ranking temporarily unavailable")
-
-                                st.markdown("---")
-
-                    # AI reasoning
-                    with st.expander("🤔 AI Reasoning", expanded=True):
-                        st.markdown(ai_recs.get("reasoning", "No detailed reasoning available."))
-
-                        if ai_recs.get("difficulty_balance"):
-                            st.write(f"**Difficulty Balance:** {ai_recs['difficulty_balance']}")
-
-                        if ai_recs.get("semesters_remaining"):
-                            st.write(f"**Estimated Semesters Remaining:** {ai_recs['semesters_remaining']}")
-
-                    # Alternative options
-                    if ai_recs.get("alternatives"):
-                        with st.expander("🔄 Alternative Courses"):
-                            for alt in ai_recs["alternatives"]:
-                                st.write(f"- {alt.get('course_code', alt)}: {alt.get('course_name', '')}")
-
-                else:
-                    # Fallback: show courses with prerequisites met
-                    st.markdown("##### Available Courses (Prerequisites Met)")
-
-                    if recs["available_courses"]:
-                        for i, course in enumerate(recs["available_courses"][:max_courses]):
+                        with metric_cols[1]:
                             st.markdown(f"""
-                            **{course['course_code']}** ({course['credits']} credits)
-                            - Prerequisites: ✅ All met
-                            """)
-                    else:
-                        st.info("Complete your current courses to unlock more options.")
+                            <div class="metric-card">
+                            <strong>Major</strong><br>
+                            {info['major']}
+                            </div>
+                            """, unsafe_allow_html=True)
 
-                    # Show courses needing prerequisites
-                    if recs["prerequisites_needed"]:
-                        with st.expander("🔒 Courses Needing Prerequisites"):
-                            for course in recs["prerequisites_needed"][:5]:
-                                missing = ", ".join(course.get("missing_prerequisites", []))
-                                st.write(f"- **{course['course_code']}**: Needs {missing}")
+                        with metric_cols[2]:
+                            st.markdown(f"""
+                            <div class="metric-card">
+                            <strong>GPA</strong><br>
+                            {info['gpa']:.2f}
+                            </div>
+                            """, unsafe_allow_html=True)
 
-                # Progress visualization
-                st.markdown("#### 📊 Degree Progress")
-                credits_done = info['credits_applied']
-                credits_total = info['credits_required']
-                progress_pct = (credits_done / credits_total) * 100
-                st.progress(progress_pct / 100)
-                st.write(f"**{credits_done}/{credits_total} credits** ({progress_pct:.1f}% complete)")
+                        with metric_cols[3]:
+                            progress_pct = (info['credits_applied'] / info['credits_required']) * 100
+                            st.markdown(f"""
+                            <div class="metric-card">
+                            <strong>Progress</strong><br>
+                            {progress_pct:.1f}%
+                            </div>
+                            """, unsafe_allow_html=True)
 
-                # Estimate remaining semesters
-                credits_remaining = credits_total - credits_done
-                avg_credits_per_sem = max_courses * 3  # Assume 3 credits per course
-                semesters_remaining = max(1, credits_remaining // avg_credits_per_sem)
-                st.info(f"📅 **Estimated {semesters_remaining} semesters remaining** at {max_courses} courses/semester")
+                        # Progress bar
+                        st.markdown("<div class='subsection-header'>📈 Credits Progress</div>", unsafe_allow_html=True)
+                        st.progress(info['credits_applied'] / info['credits_required'])
+                        st.markdown(f"**{info['credits_applied']}/{info['credits_required']} credits** ({progress_pct:.1f}%)")
 
-                # Export options
+                        # Show completed courses with better styling
+                        with st.expander(f"✅ Completed Courses ({len(eval_data['completed_courses'])})"):
+                            st.markdown("<div class='subsection-header'>Successfully Completed</div>", unsafe_allow_html=True)
+                            for course in eval_data["completed_courses"]:
+                                st.markdown(f"""
+                                <div class="course-card">
+                                <strong>{course['course_code']}</strong> — {course['course_name']}<br>
+                                <small>Grade: <span style="color: #0039A6; font-weight: bold;">{course['grade']}</span> | 
+                                Credits: <span style="color: #0039A6; font-weight: bold;">{course['credits']}</span> | 
+                                Completed: {course['term']}</small>
+                                </div>
+                                """, unsafe_allow_html=True)
+
+                        # Show in-progress courses
+                        if eval_data["in_progress_courses"]:
+                            with st.expander(f"📚 Currently Enrolled ({len(eval_data['in_progress_courses'])})"):
+                                st.markdown("<div class='subsection-header'>Currently Taking</div>", unsafe_allow_html=True)
+                                for course in eval_data["in_progress_courses"]:
+                                    st.markdown(f"""
+                                    <div class="course-card" style="border-left-color: #FF9800;">
+                                    <strong>{course['course_code']}</strong> — {course['course_name']}<br>
+                                    <small>Credits: <span style="color: #FF9800; font-weight: bold;">{course['credits']}</span> | 
+                                    Term: {course['term']}</small>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+
+                        # Show required courses
+                        with st.expander(f"📝 Courses Still Needed ({len(eval_data['required_courses'])})"):
+                            st.markdown("<div class='subsection-header'>Remaining Requirements</div>", unsafe_allow_html=True)
+                            for req in eval_data["required_courses"]:
+                                if req.get("is_elective"):
+                                    st.markdown(f"""
+                                    <div class="course-card" style="border-left-color: #4CAF50;">
+                                    📋 <strong>{req['credits']} credits</strong> of electives<br>
+                                    <small>{req['courses'][0]}</small>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                elif req.get("is_choice"):
+                                    st.write(f"- {req['credits']} credits: {' OR '.join(req['courses'])}")
+                                else:
+                                    st.write(f"- **{req['courses'][0]}** ({req['credits']} credits)")
+
+            # Major Detection Display - After PDF is parsed
+            if st.session_state.eval_data:
                 st.markdown("---")
-                st.markdown("""
-                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                            padding: 1.5rem; border-radius: 15px; margin: 1rem 0;">
-                    <h3 style="color: white; margin: 0; text-align: center;">📥 Export Your Schedule</h3>
-                    <p style="color: rgba(255,255,255,0.9); text-align: center; margin: 0.5rem 0;">
-                        Download your personalized course plan in multiple formats
-                    </p>
-                </div>
-                """, unsafe_allow_html=True)
+                detected_major = st.session_state.eval_data["student_info"]["major"]
 
-                if st.session_state.ai_recommendations:
-                    export_courses = st.session_state.ai_recommendations.get("recommended_courses", [])[:max_courses]
+                if detected_major:
+                    st.markdown(f"""
+                    <div class="success-box">
+                    ✅ <strong>Detected Major from PDF:</strong> {detected_major}<br>
+                    <small>You can confirm or change this in the preferences form below.</small>
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.markdown("""
+                    <div class="warning-box">
+                    ⚠️ <strong>Major not automatically detected</strong><br>
+                    <small>Please select your major in the preferences form below.</small>
+                    </div>
+                    """, unsafe_allow_html=True)
 
-                    # Prepare student info for export
-                    student_export_info = {
-                        "name": info.get('student_name', 'Student'),
-                        "major": info.get('major', 'Computer Science'),
-                        "semester": datetime.now().strftime("%B %Y")
+            st.markdown("---")
+
+            st.subheader("🎯 Step 2: Your Preferences")
+
+            # Student preferences form
+            with st.form("preferences_form"):
+                # Display selected school (already chosen in Step 1)
+                st.markdown(f"**🏫 Your School:** {st.session_state.selected_school}")
+                st.caption("Selected in Step 1")
+
+                # Use the school from session state
+                selected_school = st.session_state.selected_school
+
+                # Select major based on school
+                available_majors = catalog_loader.get_majors_for_school(selected_school)
+
+                # Check if we already have major from PDF
+                if st.session_state.eval_data and st.session_state.eval_data["student_info"].get("major"):
+                    # Major already known from uploaded PDF - display as read-only
+                    confirmed_major = st.session_state.eval_data["student_info"]["major"]
+                    st.markdown(f"**📚 Your Major:** {confirmed_major}")
+                    st.caption("Detected from your DegreeWorks file")
+                    selected_major = confirmed_major
+                else:
+                    # No major in PDF - ask user to select
+                    selected_major = st.selectbox(
+                        "Select Your Major",
+                        options=available_majors,
+                        help="Choose your degree program to get tailored recommendations"
+                    )
+
+                # Note: selected_major and selected_school are local variables
+                # They will only be saved to session state when form is submitted
+
+                # Career goals
+                career_goals = st.text_area(
+                    "Career Goals & Interests (Optional)",
+                    placeholder="E.g., I want to work in data science, interested in AI/ML, cybersecurity...",
+                    height=80
+                )
+
+                # Work schedule
+                has_job = st.checkbox("I have a job/significant time commitments")
+
+                # Preferred class times
+                preferred_times = st.multiselect(
+                    "Preferred Class Times",
+                    ["Morning (8am-12pm)", "Afternoon (12pm-5pm)", "Evening (5pm+)", "No preference"],
+                    default=["No preference"]
+                )
+
+                # Course load
+                max_courses = st.slider(
+                    "Maximum Courses Per Semester",
+                    min_value=3,
+                    max_value=6,
+                    value=4,
+                    help="How many courses do you want to take?"
+                )
+
+                # Difficulty preference
+                difficulty_pref = st.radio(
+                    "Semester Difficulty Preference",
+                    ["Light (easier courses)", "Balanced", "Challenging (harder courses)"],
+                    index=1,
+                    horizontal=True
+                )
+
+                # Specific preferences
+                col_a, col_b = st.columns(2)
+                with col_a:
+                    prioritize_courses = st.text_input(
+                        "Courses to Prioritize",
+                        placeholder="E.g., CSC 3210, MATH 2641"
+                    )
+                with col_b:
+                    avoid_courses = st.text_input(
+                        "Courses to Avoid",
+                        placeholder="E.g., early morning classes"
+                    )
+
+                # Submit button
+                submit_button = st.form_submit_button("🚀 Generate My Schedule", use_container_width=True)
+
+        with col2:
+            st.subheader("📅 Your Personalized Schedule")
+
+            if submit_button and st.session_state.eval_data:
+                # NOW save the form values to session state (after submission)
+                st.session_state.selected_major = selected_major
+                st.session_state.selected_school = selected_school
+                st.session_state.processing_state = 'processing'
+
+                eval_data = st.session_state.eval_data
+
+                try:
+                    # Get recommendations based on prerequisites (pass school for correct course codes)
+                    school_name = st.session_state.selected_school
+                    recs = get_next_semester_recommendations(eval_data, school=school_name)
+
+                    # Build preferences dict
+                    preferences = {
+                        "career_goals": career_goals,
+                        "has_job": has_job,
+                        "preferred_times": preferred_times,
+                        "max_courses": max_courses,
+                        "difficulty_preference": difficulty_pref,
+                        "prioritize_courses": prioritize_courses,
+                        "avoid_courses": avoid_courses
                     }
 
-                    # Create three columns for export buttons
-                    exp_col1, exp_col2, exp_col3 = st.columns(3)
-
-                    with exp_col1:
-                        st.markdown("""
-                        <div style="text-align: center; padding: 1rem;">
-                            <h4 style="color: #0039A6; margin: 0;">📄 PDF</h4>
-                            <p style="font-size: 0.85em; color: #666;">Professional format</p>
-                        </div>
-                        """, unsafe_allow_html=True)
-
+                    # Try to get AI recommendations
+                    with st.spinner("🤖 AI is analyzing your evaluation and generating recommendations..."):
                         try:
-                            pdf_buffer = generate_pdf_schedule(export_courses, student_export_info)
-                            st.download_button(
-                                label="⬇️ Download PDF",
-                                data=pdf_buffer,
-                                file_name=f"gsu_schedule_{datetime.now().strftime('%Y%m%d')}.pdf",
-                                mime="application/pdf",
-                                use_container_width=True
+                            from utils.llm_integration import CourseRecommender
+
+                            recommender = CourseRecommender()
+
+                            # Prepare data for LLM
+                            student_data = {
+                                "student_name": eval_data["student_info"]["student_name"],
+                                "gpa": eval_data["student_info"]["gpa"],
+                                "total_credits": eval_data["student_info"]["credits_applied"],
+                                "credits_required": eval_data["student_info"]["credits_required"],
+                                "completed_courses": eval_data["completed_courses"],
+                                "in_progress_courses": eval_data["in_progress_courses"]
+                            }
+
+                            # Get courses that can be taken (prerequisites met)
+                            available_courses = recs["available_courses"]
+                            # Degree requirements
+                            degree_requirements = {
+                                "required_courses": eval_data["required_courses"],
+                                "summary": eval_data["requirements_summary"]
+                            }
+
+                            ai_result = recommender.generate_schedule(
+                                student_data=student_data,
+                                preferences=preferences,
+                                available_courses=available_courses,
+                                degree_requirements=degree_requirements,
+                                allow_retakes=False
                             )
+                            st.session_state.ai_recommendations = ai_result
+                            use_ai = True
+
                         except Exception as e:
-                            st.error(f"PDF export unavailable: {str(e)[:50]}")
+                            st.warning(f"AI recommendations unavailable: {str(e)}")
+                            st.info("Showing basic recommendations based on prerequisites.")
+                            use_ai = False
 
-                    with exp_col2:
-                        st.markdown("""
-                        <div style="text-align: center; padding: 1rem;">
-                            <h4 style="color: #0039A6; margin: 0;">📅 Calendar</h4>
-                            <p style="font-size: 0.85em; color: #666;">Import to Google</p>
-                        </div>
-                        """, unsafe_allow_html=True)
+                    # Mark as complete if we got here
+                    st.session_state.processing_state = 'complete'
 
-                        try:
-                            ics_content = generate_ics_calendar(export_courses)
-                            st.download_button(
-                                label="⬇️ Download .ics",
-                                data=ics_content,
-                                file_name=f"gsu_schedule_{datetime.now().strftime('%Y%m%d')}.ics",
-                                mime="text/calendar",
-                                use_container_width=True
-                            )
-                        except Exception as e:
-                            st.error(f"Calendar export unavailable")
+                except Exception as e:
+                    st.error(f"❌ Error generating schedule: {str(e)}")
+                    import traceback
+                    st.error(f"Debug info: {traceback.format_exc()}")
+                    st.session_state.processing_state = 'error'
+                    use_ai = False
 
-                    with exp_col3:
-                        st.markdown("""
-                        <div style="text-align: center; padding: 1rem;">
-                            <h4 style="color: #0039A6; margin: 0;">📋 Text</h4>
-                            <p style="font-size: 0.85em; color: #666;">Copy & paste</p>
-                        </div>
-                        """, unsafe_allow_html=True)
+                # Only show success and results if no error occurred
+                if st.session_state.processing_state == 'complete':
+                    st.success("✅ Schedule Generated!")
 
-                        try:
-                            text_schedule = generate_text_schedule(export_courses, student_export_info)
+                    # Display student info summary
+                    info = eval_data["student_info"]
+                    st.markdown(f"#### 🎓 Recommendations for {info['student_name']}")
 
-                            # Copy to clipboard using text area
-                            if st.button("📋 Copy to Clipboard", use_container_width=True):
-                                st.code(text_schedule, language=None)
-                                st.success("✅ Schedule displayed! Copy the text above.")
+                    # Show AI recommendations or fallback
+                    if use_ai and st.session_state.ai_recommendations:
+                        ai_recs = st.session_state.ai_recommendations
 
-                            # Also offer as download
-                            st.download_button(
-                                label="⬇️ Download .txt",
-                                data=text_schedule,
-                                file_name=f"gsu_schedule_{datetime.now().strftime('%Y%m%d')}.txt",
-                                mime="text/plain",
-                                use_container_width=True
-                            )
-                        except Exception as e:
-                            st.error(f"Text export unavailable")
+                        if ai_recs.get("recommended_courses"):
+                            st.markdown("##### 📋 Recommended Courses")
 
-                    # JSON export (keep for developers/debugging)
-                    with st.expander("🔧 Advanced: JSON Export"):
-                        export_data = json.dumps(st.session_state.ai_recommendations, indent=2)
-                        st.download_button(
-                            "Download Full Data (JSON)",
-                            data=export_data,
-                            file_name=f"gsu_schedule_data_{datetime.now().strftime('%Y%m%d')}.json",
-                            mime="application/json"
-                        )
+                            # Get recommended courses
+                            recommended_courses = ai_recs["recommended_courses"][:max_courses]
 
-        elif submit_button and not st.session_state.eval_data:
-            st.warning("⚠️ Please upload your academic evaluation first.")
+                            # Enrich courses with RMP data
+                            try:
+                                school_name = info.get('school', 'Georgia State University')
+                                enriched_courses = enrich_courses_with_rmp(recommended_courses, school_name)
+                            except Exception as e:
+                                st.warning(f"⚠️ Rate My Professor data temporarily unavailable")
+                                enriched_courses = recommended_courses
 
-        elif st.session_state.processing_state == 'idle':
-            st.info("👆 Upload your academic evaluation and click 'Generate My Schedule' to get started.")
+                            for course in enriched_courses:
+                                with st.container():
+                                    # Course header
+                                    col1, col2 = st.columns([3, 1])
+                                    with col1:
+                                        st.markdown(f"""
+                                        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                                    padding: 1rem; border-radius: 10px; margin: 0.5rem 0;">
+                                            <h4 style="color: white; margin: 0;">
+                                                {course.get('course_code', 'N/A')} - {course.get('course_name', 'N/A')}
+                                            </h4>
+                                        </div>
+                                        """, unsafe_allow_html=True)
 
-        elif st.session_state.processing_state == 'error':
-            st.error("❌ An error occurred. Please try uploading your file again.")
+                                    with col2:
+                                        difficulty = course.get('difficulty', 'Medium')
+                                        if difficulty.lower() == 'easy':
+                                            diff_color = "#28a745"
+                                            diff_emoji = "😊"
+                                        elif difficulty.lower() == 'hard':
+                                            diff_color = "#dc3545"
+                                            diff_emoji = "💪"
+                                        else:
+                                            diff_color = "#ffc107"
+                                            diff_emoji = "📚"
 
-    # Add catalog-based recommendations section ONLY after form submission
-    if (st.session_state.eval_data and
-        st.session_state.selected_major and
-        st.session_state.processing_state == 'complete'):
-        st.markdown("---")
-        st.markdown("### 📚 Catalog-Based Course Requirements")
-        st.markdown("*These recommendations are based on your selected major's course catalog.*")
+                                        st.markdown(f"""
+                                        <div style="background: {diff_color}; color: white;
+                                                    padding: 0.5rem; border-radius: 8px; text-align: center;">
+                                            <strong>{diff_emoji} {difficulty}</strong>
+                                        </div>
+                                        """, unsafe_allow_html=True)
 
-        eval_data = st.session_state.eval_data
-        major = st.session_state.selected_major
-        school = st.session_state.selected_school
+                                    # Course details
+                                    col_a, col_b = st.columns(2)
 
-        # Get completed courses and currently enrolled courses
-        completed_courses = [c['course_code'] for c in eval_data['completed_courses']]
-        in_progress_courses = [c['course_code'] for c in eval_data['in_progress_courses']]
-        all_taken_courses = completed_courses + in_progress_courses
+                                    with col_a:
+                                        st.write(f"**📝 Reason:** {course.get('reason', 'Required for major')}")
+                                        credits = course.get('credits', 3)
+                                        st.write(f"**⭐ Credits:** {credits}")
 
-        # Show degree progress
-        col_prog1, col_prog2, col_prog3 = st.columns(3)
+                                    with col_b:
+                                        # RMP ratings
+                                        rmp_data = course.get('rmp_data')
+                                        if rmp_data:
+                                            rating = rmp_data.get('rating')
+                                            difficulty_rmp = rmp_data.get('difficulty')
+                                            num_ratings = rmp_data.get('num_ratings', 0)
 
-        with col_prog1:
-            progress_info = catalog_loader.get_degree_progress(school, major, completed_courses)
-            st.metric("Core Courses", progress_info['core_progress'])
+                                            if rating:
+                                                rating_emoji = "🌟" if rating >= 4.5 else "⭐" if rating >= 4.0 else "✨" if rating >= 3.5 else "💫"
+                                                st.write(f"**👨‍🏫 Professor Rating:** {rating_emoji} {rating}/5.0")
 
-        with col_prog2:
-            st.metric("Math Courses", progress_info['math_progress'])
+                                            if difficulty_rmp:
+                                                diff_rmp_emoji = "😊" if difficulty_rmp <= 2.0 else "😐" if difficulty_rmp <= 3.0 else "😰" if difficulty_rmp <= 4.0 else "💀"
+                                                st.write(f"**🎯 Prof Difficulty:** {diff_rmp_emoji} {difficulty_rmp}/5.0")
 
-        with col_prog3:
-            st.metric("Completion", f"{progress_info['completion_percentage']}%")
+                                            if num_ratings:
+                                                st.caption(f"📊 Based on {num_ratings} reviews")
+                                        else:
+                                            professor = course.get('professor', 'TBA')
+                                            st.write(f"**👨‍🏫 Professor:** {professor}")
+                                            if professor.lower() not in ['tba', 'staff', 'tbd']:
+                                                st.caption("🔍 Looking up rating...")
 
-        # Show next available courses based on catalog
-        st.markdown("#### 🟢 Courses You Can Take Now")
+                                    # Section rankings (NEW FEATURE!)
+                                    with st.expander("📊 Available Sections (Ranked by Professor Quality)"):
+                                        st.caption("Sections are ranked using Rate My Professor data - best professors first!")
 
-        # Show info about currently enrolled courses
-        if in_progress_courses:
-            st.info(f"📚 Excluding {len(in_progress_courses)} course(s) you're currently enrolled in")
+                                        # Get real sections from Banner API (route based on selected school)
+                                        course_code = course.get('course_code', '')
+                                        if course_code:
+                                            try:
+                                                # Route to correct Banner API based on selected school
+                                                school_name = st.session_state.selected_school
+                                                if school_name == "Georgia Tech":
+                                                    sample_sections = get_gatech_sections(course_code)
+                                                else:  # Georgia State University
+                                                    sample_sections = get_gsu_sections(course_code)
 
-        next_courses = catalog_loader.get_recommended_next_courses(school, major, all_taken_courses, limit=8)
+                                                # Check if sections were found
+                                                if not sample_sections:
+                                                    st.info(f"ℹ️ No sections found for {course_code} in the current term. This course may not be offered this semester.")
+                                                    continue
+                                                ranked_sections = get_ranked_sections(
+                                                    course_code=course_code,
+                                                    sections_data=sample_sections,
+                                                    school=school_name
+                                                )
 
-        if next_courses:
-            cols = st.columns(2)
-            for i, course in enumerate(next_courses):
-                with cols[i % 2]:
-                    st.markdown(f"""
-                    **{course['course_code']}**  
-                    {course['course_name']}  
-                    *{course['credits']} credits*  
-                    _{course['description'][:100]}..._
-                    """)
-        else:
-            st.info("Complete more prerequisites to unlock additional courses.")
+                                                # Display ranked sections
+                                                for section in ranked_sections[:3]:  # Show top 3
+                                                    # Rank badge
+                                                    if section.rank == 1:
+                                                        rank_emoji = "🥇"
+                                                        rank_color = "#FFD700"
+                                                    elif section.rank == 2:
+                                                        rank_emoji = "🥈"
+                                                        rank_color = "#C0C0C0"
+                                                    elif section.rank == 3:
+                                                        rank_emoji = "🥉"
+                                                        rank_color = "#CD7F32"
+                                                    else:
+                                                        rank_emoji = f"#{section.rank}"
+                                                        rank_color = "#666666"
 
-        # Show degree requirements
-        st.markdown("#### 📋 Major Requirements")
+                                                    # Section card with clickable professor name
+                                                    if section.rmp_url:
+                                                        instructor_display = f'<a href="{section.rmp_url}" target="_blank" style="color: #1f77b4; text-decoration: none;">{section.instructor_normalized}</a>'
+                                                    else:
+                                                        instructor_display = section.instructor_normalized
 
-        req_tab1, req_tab2, req_tab3 = st.tabs(["Core Courses", "Electives", "Math"])
+                                                    st.markdown(f"""
+                                                    <div style="background: linear-gradient(90deg, {rank_color}22 0%, {rank_color}11 100%);
+                                                                padding: 0.75rem; border-radius: 8px; margin: 0.5rem 0;
+                                                                border-left: 4px solid {rank_color};">
+                                                        <strong>{rank_emoji} Section {section.section}</strong> - {instructor_display}
+                                                    </div>
+                                                    """, unsafe_allow_html=True)
 
-        with req_tab1:
-            core_courses = catalog_loader.get_core_courses(school, major)
-            completed_core = [c for c in core_courses if c['course_code'] in completed_courses]
-            in_progress_core = [c for c in core_courses if c['course_code'] in in_progress_courses]
-            pending_core = [c for c in core_courses if c['course_code'] not in all_taken_courses]
+                                                    # Section details
+                                                    col_s1, col_s2 = st.columns(2)
 
-            col1, col2, col3 = st.columns(3)
+                                                    with col_s1:
+                                                        if section.time:
+                                                            st.caption(f"🕐 {section.time}")
+                                                        if section.location:
+                                                            st.caption(f"📍 {section.location}")
 
-            with col1:
-                st.markdown("**Completed:**")
-                if completed_core:
-                    for course in completed_core:
-                        st.markdown(f"✅ {course['course_code']}: {course['course_name']}")
-                else:
-                    st.markdown("*None yet*")
+                                                    with col_s2:
+                                                        if section.rating:
+                                                            rating_emoji_s = "🌟" if section.rating >= 4.5 else "⭐" if section.rating >= 4.0 else "✨" if section.rating >= 3.5 else "💫"
+                                                            st.caption(f"{rating_emoji_s} {section.rating}/5.0 ({section.num_reviews} reviews)")
+                                                            st.caption(f"📊 Quality Score: {section.score}")
+                                                        else:
+                                                            st.caption("⚠️ No RMP data")
 
-            with col2:
-                st.markdown("**Currently Enrolled:**")
-                if in_progress_core:
-                    for course in in_progress_core:
-                        st.markdown(f"📚 {course['course_code']}: {course['course_name']}")
-                else:
-                    st.markdown("*None*")
+                                                # Show note about fallback
+                                                if len(ranked_sections) > 3:
+                                                    st.info(f"💡 **Tip:** If the top section fills, try Section {ranked_sections[1].section} next!")
 
-            with col3:
-                st.markdown("**Still Needed:**")
-                if pending_core:
-                    for course in pending_core:
-                        st.markdown(f"⏳ {course['course_code']}: {course['course_name']}")
-                else:
-                    st.success("✅ All core courses done!")
+                                            except Exception as e:
+                                                st.warning("Section ranking temporarily unavailable")
 
-        with req_tab2:
-            electives = catalog_loader.get_elective_courses(school, major)
-            if electives:
-                st.markdown("Choose electives based on your interests:")
-                for elective in electives:
-                    # Check if already taking or completed
-                    if elective['course_code'] in all_taken_courses:
-                        if elective['course_code'] in completed_courses:
-                            status = "✅ Completed"
-                        else:
-                            status = "📚 Currently Enrolled"
+                                    # Course explanation feature
+                                    with st.expander("❓ Why was this course recommended?"):
+                                        course_code = course.get('course_code', '')
+                                        course_name = course.get('course_name', '')
+
+                                        # Check if explanation already cached
+                                        cache_key = f"{info.get('student_id', 'unknown')}_{course_code}"
+
+                                        if cache_key in st.session_state.explanations_cache:
+                                            # Show cached explanation
+                                            st.markdown(st.session_state.explanations_cache[cache_key])
+                                        else:
+                                            # Check if limit reached
+                                            if st.session_state.explanation_count >= 5:
+                                                st.warning("⚠️ You've reached the maximum of 5 explanations per session. This helps control API costs.")
+                                                st.info("💡 Tip: Refresh the page to reset the counter if needed.")
+                                            else:
+                                                # Show button to generate explanation
+                                                if st.button("Generate AI Explanation", key=f"explain_{course_code}"):
+                                                    with st.spinner("Generating explanation..."):
+                                                        try:
+                                                            # Get recommender from earlier
+                                                            from utils.llm_integration import get_course_recommender
+                                                            recommender = get_course_recommender()
+
+                                                            if recommender:
+                                                                # Prepare data for explanation
+                                                                student_data_for_explanation = {
+                                                                    'completed_courses': eval_data.get('completed_courses', []),
+                                                                    'gpa': info.get('gpa', 0.0),
+                                                                    'total_credits': info.get('credits_applied', 0),
+                                                                    'major': info.get('major', 'Computer Science')
+                                                                }
+
+                                                                # Get available courses and requirements
+                                                                recs_for_explanation = get_next_semester_recommendations(
+                                                                    eval_data,
+                                                                    school=st.session_state.selected_school
+                                                                )
+                                                                available_courses_list = recs_for_explanation.get("available_courses", [])
+                                                                degree_requirements_dict = {
+                                                                    "required_courses": eval_data.get("required_courses", []),
+                                                                    "summary": eval_data.get("requirements_summary", {})
+                                                                }
+
+                                                                # Generate explanation
+                                                                explanation = recommender.generate_course_explanation(
+                                                                    course_code=course_code,
+                                                                    course_name=course_name,
+                                                                    student_data=student_data_for_explanation,
+                                                                    preferences=preferences,
+                                                                    available_courses=available_courses_list,
+                                                                    degree_requirements=degree_requirements_dict
+                                                                )
+
+                                                                # Cache the explanation
+                                                                st.session_state.explanations_cache[cache_key] = explanation
+                                                                st.session_state.explanation_count += 1
+
+                                                                # Display it
+                                                                st.markdown(explanation)
+                                                                st.caption(f"📊 Explanations used: {st.session_state.explanation_count}/5")
+                                                            else:
+                                                                st.error("AI explanation service unavailable. Please check your API key configuration.")
+
+                                                        except Exception as e:
+                                                            st.error(f"Unable to generate explanation: {str(e)}")
+                                                            st.info("This course was recommended based on your academic progress and degree requirements.")
+
+                                    st.markdown("---")
+
+                        # AI reasoning
+                        with st.expander("🤔 AI Reasoning", expanded=True):
+                            st.markdown(ai_recs.get("reasoning", "No detailed reasoning available."))
+
+                            if ai_recs.get("difficulty_balance"):
+                                st.write(f"**Difficulty Balance:** {ai_recs['difficulty_balance']}")
+
+                            if ai_recs.get("semesters_remaining"):
+                                st.write(f"**Estimated Semesters Remaining:** {ai_recs['semesters_remaining']}")
+
+                        # Alternative options
+                        if ai_recs.get("alternatives"):
+                            with st.expander("🔄 Alternative Courses"):
+                                for alt in ai_recs["alternatives"]:
+                                    st.write(f"- {alt.get('course_code', alt)}: {alt.get('course_name', '')}")
+
                     else:
-                        can_take = catalog_loader.check_prerequisites_met(
-                            school, major, elective['course_code'], all_taken_courses
-                        )['can_take']
-                        status = "✅ Available" if can_take else "🔒 Prerequisites needed"
-                    st.markdown(f"- **{elective['course_code']}**: {elective['course_name']} - {status}")
-            else:
-                st.info("No electives defined for this major.")
+                        # Fallback: show courses with prerequisites met
+                        st.markdown("##### Available Courses (Prerequisites Met)")
 
-        with req_tab3:
-            math_reqs = catalog_loader.get_math_requirements(school, major)
-            if math_reqs:
-                completed_math = [m for m in math_reqs if m['course_code'] in completed_courses]
-                in_progress_math = [m for m in math_reqs if m['course_code'] in in_progress_courses]
-                pending_math = [m for m in math_reqs if m['course_code'] not in all_taken_courses]
+                        if recs["available_courses"]:
+                            for i, course in enumerate(recs["available_courses"][:max_courses]):
+                                st.markdown(f"""
+                                **{course['course_code']}** ({course['credits']} credits)
+                                - Prerequisites: ✅ All met
+                                """)
+                        else:
+                            st.info("Complete your current courses to unlock more options.")
+
+                        # Show courses needing prerequisites
+                        if recs["prerequisites_needed"]:
+                            with st.expander("🔒 Courses Needing Prerequisites"):
+                                for course in recs["prerequisites_needed"][:5]:
+                                    missing = ", ".join(course.get("missing_prerequisites", []))
+                                    st.write(f"- **{course['course_code']}**: Needs {missing}")
+
+                    # Progress visualization
+                    st.markdown("#### 📊 Degree Progress")
+                    credits_done = info['credits_applied']
+                    credits_total = info['credits_required']
+                    progress_pct = (credits_done / credits_total) * 100
+                    st.progress(progress_pct / 100)
+                    st.write(f"**{credits_done}/{credits_total} credits** ({progress_pct:.1f}% complete)")
+
+                    # Estimate remaining semesters
+                    credits_remaining = credits_total - credits_done
+                    avg_credits_per_sem = max_courses * 3  # Assume 3 credits per course
+                    semesters_remaining = max(1, credits_remaining // avg_credits_per_sem)
+                    st.info(f"📅 **Estimated {semesters_remaining} semesters remaining** at {max_courses} courses/semester")
+
+                    # Export options
+                    st.markdown("---")
+                    st.markdown("""
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                padding: 1.5rem; border-radius: 15px; margin: 1rem 0;">
+                        <h3 style="color: white; margin: 0; text-align: center;">📥 Export Your Schedule</h3>
+                        <p style="color: rgba(255,255,255,0.9); text-align: center; margin: 0.5rem 0;">
+                            Download your personalized course plan in multiple formats
+                        </p>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    if st.session_state.ai_recommendations:
+                        export_courses = st.session_state.ai_recommendations.get("recommended_courses", [])[:max_courses]
+
+                        # Prepare student info for export
+                        student_export_info = {
+                            "name": info.get('student_name', 'Student'),
+                            "major": info.get('major', 'Computer Science'),
+                            "semester": datetime.now().strftime("%B %Y")
+                        }
+
+                        # Create three columns for export buttons
+                        exp_col1, exp_col2, exp_col3 = st.columns(3)
+
+                        with exp_col1:
+                            st.markdown("""
+                            <div style="text-align: center; padding: 1rem;">
+                                <h4 style="color: #0039A6; margin: 0;">📄 PDF</h4>
+                                <p style="font-size: 0.85em; color: #666;">Professional format</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+
+                            try:
+                                pdf_buffer = generate_pdf_schedule(export_courses, student_export_info)
+                                st.download_button(
+                                    label="⬇️ Download PDF",
+                                    data=pdf_buffer,
+                                    file_name=f"gsu_schedule_{datetime.now().strftime('%Y%m%d')}.pdf",
+                                    mime="application/pdf",
+                                    use_container_width=True
+                                )
+                            except Exception as e:
+                                st.error(f"PDF export unavailable: {str(e)[:50]}")
+
+                        with exp_col2:
+                            st.markdown("""
+                            <div style="text-align: center; padding: 1rem;">
+                                <h4 style="color: #0039A6; margin: 0;">📅 Calendar</h4>
+                                <p style="font-size: 0.85em; color: #666;">Import to Google</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+
+                            try:
+                                ics_content = generate_ics_calendar(export_courses)
+                                st.download_button(
+                                    label="⬇️ Download .ics",
+                                    data=ics_content,
+                                    file_name=f"gsu_schedule_{datetime.now().strftime('%Y%m%d')}.ics",
+                                    mime="text/calendar",
+                                    use_container_width=True
+                                )
+                            except Exception as e:
+                                st.error(f"Calendar export unavailable")
+
+                        with exp_col3:
+                            st.markdown("""
+                            <div style="text-align: center; padding: 1rem;">
+                                <h4 style="color: #0039A6; margin: 0;">📋 Text</h4>
+                                <p style="font-size: 0.85em; color: #666;">Copy & paste</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+
+                            try:
+                                text_schedule = generate_text_schedule(export_courses, student_export_info)
+
+                                # Copy to clipboard using text area
+                                if st.button("📋 Copy to Clipboard", use_container_width=True):
+                                    st.code(text_schedule, language=None)
+                                    st.success("✅ Schedule displayed! Copy the text above.")
+
+                                # Also offer as download
+                                st.download_button(
+                                    label="⬇️ Download .txt",
+                                    data=text_schedule,
+                                    file_name=f"gsu_schedule_{datetime.now().strftime('%Y%m%d')}.txt",
+                                    mime="text/plain",
+                                    use_container_width=True
+                                )
+                            except Exception as e:
+                                st.error(f"Text export unavailable")
+
+                        # JSON export (keep for developers/debugging)
+                        with st.expander("🔧 Advanced: JSON Export"):
+                            export_data = json.dumps(st.session_state.ai_recommendations, indent=2)
+                            st.download_button(
+                                "Download Full Data (JSON)",
+                                data=export_data,
+                                file_name=f"gsu_schedule_data_{datetime.now().strftime('%Y%m%d')}.json",
+                                mime="application/json"
+                            )
+
+            elif submit_button and not st.session_state.eval_data:
+                st.warning("⚠️ Please upload your academic evaluation first.")
+
+            elif st.session_state.processing_state == 'idle':
+                st.info("👆 Upload your academic evaluation and click 'Generate My Schedule' to get started.")
+
+            elif st.session_state.processing_state == 'error':
+                st.error("❌ An error occurred. Please try uploading your file again.")
+
+        # Add catalog-based recommendations section ONLY after form submission
+        if (st.session_state.eval_data and
+            st.session_state.selected_major and
+            st.session_state.processing_state == 'complete'):
+            st.markdown("---")
+            st.markdown("### 📚 Catalog-Based Course Requirements")
+            st.markdown("*These recommendations are based on your selected major's course catalog.*")
+
+            eval_data = st.session_state.eval_data
+            major = st.session_state.selected_major
+            school = st.session_state.selected_school
+
+            # Get completed courses and currently enrolled courses
+            completed_courses = [c['course_code'] for c in eval_data['completed_courses']]
+            in_progress_courses = [c['course_code'] for c in eval_data['in_progress_courses']]
+            all_taken_courses = completed_courses + in_progress_courses
+
+            # Show degree progress
+            col_prog1, col_prog2, col_prog3 = st.columns(3)
+
+            with col_prog1:
+                progress_info = catalog_loader.get_degree_progress(school, major, completed_courses)
+                st.metric("Core Courses", progress_info['core_progress'])
+
+            with col_prog2:
+                st.metric("Math Courses", progress_info['math_progress'])
+
+            with col_prog3:
+                st.metric("Completion", f"{progress_info['completion_percentage']}%")
+
+            # Show next available courses based on catalog
+            st.markdown("#### 🟢 Courses You Can Take Now")
+
+            # Show info about currently enrolled courses
+            if in_progress_courses:
+                st.info(f"📚 Excluding {len(in_progress_courses)} course(s) you're currently enrolled in")
+
+            next_courses = catalog_loader.get_recommended_next_courses(school, major, all_taken_courses, limit=8)
+
+            if next_courses:
+                cols = st.columns(2)
+                for i, course in enumerate(next_courses):
+                    with cols[i % 2]:
+                        st.markdown(f"""
+                        **{course['course_code']}**  
+                        {course['course_name']}  
+                        *{course['credits']} credits*  
+                        _{course['description'][:100]}..._
+                        """)
+            else:
+                st.info("Complete more prerequisites to unlock additional courses.")
+
+            # Show degree requirements
+            st.markdown("#### 📋 Major Requirements")
+
+            req_tab1, req_tab2, req_tab3 = st.tabs(["Core Courses", "Electives", "Math"])
+
+            with req_tab1:
+                core_courses = catalog_loader.get_core_courses(school, major)
+                completed_core = [c for c in core_courses if c['course_code'] in completed_courses]
+                in_progress_core = [c for c in core_courses if c['course_code'] in in_progress_courses]
+                pending_core = [c for c in core_courses if c['course_code'] not in all_taken_courses]
 
                 col1, col2, col3 = st.columns(3)
 
                 with col1:
                     st.markdown("**Completed:**")
-                    if completed_math:
-                        for course in completed_math:
+                    if completed_core:
+                        for course in completed_core:
                             st.markdown(f"✅ {course['course_code']}: {course['course_name']}")
                     else:
                         st.markdown("*None yet*")
 
                 with col2:
                     st.markdown("**Currently Enrolled:**")
-                    if in_progress_math:
-                        for course in in_progress_math:
+                    if in_progress_core:
+                        for course in in_progress_core:
                             st.markdown(f"📚 {course['course_code']}: {course['course_name']}")
                     else:
                         st.markdown("*None*")
 
                 with col3:
                     st.markdown("**Still Needed:**")
-                    if pending_math:
-                        for course in pending_math:
+                    if pending_core:
+                        for course in pending_core:
                             st.markdown(f"⏳ {course['course_code']}: {course['course_name']}")
                     else:
-                        st.success("✅ All math done!")
+                        st.success("✅ All core courses done!")
 
-with tab3:
-    st.markdown("### 📚 Catalog Explorer")
-    st.markdown("Browse and explore courses for each major program.")
+            with req_tab2:
+                electives = catalog_loader.get_elective_courses(school, major)
+                if electives:
+                    st.markdown("Choose electives based on your interests:")
+                    for elective in electives:
+                        # Check if already taking or completed
+                        if elective['course_code'] in all_taken_courses:
+                            if elective['course_code'] in completed_courses:
+                                status = "✅ Completed"
+                            else:
+                                status = "📚 Currently Enrolled"
+                        else:
+                            can_take = catalog_loader.check_prerequisites_met(
+                                school, major, elective['course_code'], all_taken_courses
+                            )['can_take']
+                            status = "✅ Available" if can_take else "🔒 Prerequisites needed"
+                        st.markdown(f"- **{elective['course_code']}**: {elective['course_name']} - {status}")
+                else:
+                    st.info("No electives defined for this major.")
 
-    # School and Major selectors
-    col_sch, col_maj = st.columns(2)
+            with req_tab3:
+                math_reqs = catalog_loader.get_math_requirements(school, major)
+                if math_reqs:
+                    completed_math = [m for m in math_reqs if m['course_code'] in completed_courses]
+                    in_progress_math = [m for m in math_reqs if m['course_code'] in in_progress_courses]
+                    pending_math = [m for m in math_reqs if m['course_code'] not in all_taken_courses]
+
+                    col1, col2, col3 = st.columns(3)
+
+                    with col1:
+                        st.markdown("**Completed:**")
+                        if completed_math:
+                            for course in completed_math:
+                                st.markdown(f"✅ {course['course_code']}: {course['course_name']}")
+                        else:
+                            st.markdown("*None yet*")
+
+                    with col2:
+                        st.markdown("**Currently Enrolled:**")
+                        if in_progress_math:
+                            for course in in_progress_math:
+                                st.markdown(f"📚 {course['course_code']}: {course['course_name']}")
+                        else:
+                            st.markdown("*None*")
+
+                    with col3:
+                        st.markdown("**Still Needed:**")
+                        if pending_math:
+                            for course in pending_math:
+                                st.markdown(f"⏳ {course['course_code']}: {course['course_name']}")
+                        else:
+                            st.success("✅ All math done!")
+
+    with tab3:
+        st.markdown("### 📚 Catalog Explorer")
+        st.markdown("Browse and explore courses for each major program.")
+
+        # School and Major selectors
+        col_sch, col_maj = st.columns(2)
     
-    with col_sch:
-        explorer_school = st.selectbox(
-            "Select a School",
-            options=catalog_loader.get_available_schools(),
-            key="catalog_explorer_school"
-        )
-    
-    with col_maj:
-        if explorer_school:
-            majors_for_school = catalog_loader.get_majors_for_school(explorer_school)
-            explorer_major = st.selectbox(
-                "Select a Major to Explore",
-                options=majors_for_school,
-                key="catalog_explorer_major"
+        with col_sch:
+            explorer_school = st.selectbox(
+                "Select a School",
+                options=catalog_loader.get_available_schools(),
+                key="catalog_explorer_school"
             )
-        else:
-            explorer_major = None
+    
+        with col_maj:
+            if explorer_school:
+                majors_for_school = catalog_loader.get_majors_for_school(explorer_school)
+                explorer_major = st.selectbox(
+                    "Select a Major to Explore",
+                    options=majors_for_school,
+                    key="catalog_explorer_major"
+                )
+            else:
+                explorer_major = None
 
-    if explorer_major and explorer_school:
-        # Get catalog info
-        catalog = catalog_loader.get_catalog(explorer_school, explorer_major)
-        metadata = catalog.get("metadata", {}) if catalog else {}
+        if explorer_major and explorer_school:
+            # Get catalog info
+            catalog = catalog_loader.get_catalog(explorer_school, explorer_major)
+            metadata = catalog.get("metadata", {}) if catalog else {}
 
-        # Header
-        st.markdown(f"## {metadata.get('major', explorer_major)}")
-        st.markdown(f"**Degree Type:** {metadata.get('degree_type', 'N/A')} | "
-                    f"**Total Credits Required:** {metadata.get('total_credits_required', 'N/A')}")
+            # Header
+            st.markdown(f"## {metadata.get('major', explorer_major)}")
+            st.markdown(f"**Degree Type:** {metadata.get('degree_type', 'N/A')} | "
+                        f"**Total Credits Required:** {metadata.get('total_credits_required', 'N/A')}")
 
-        st.markdown("---")
+            st.markdown("---")
 
-        # Tabs for different course types
-        cat_tab1, cat_tab2, cat_tab3 = st.tabs(["Core Courses", "Electives", "All Courses"])
+            # Tabs for different course types
+            cat_tab1, cat_tab2, cat_tab3 = st.tabs(["Core Courses", "Electives", "All Courses"])
 
-        with cat_tab1:
-            core_courses = catalog_loader.get_core_courses(explorer_school, explorer_major)
-            st.markdown(f"### Required Core Courses ({len(core_courses)} courses)")
+            with cat_tab1:
+                core_courses = catalog_loader.get_core_courses(explorer_school, explorer_major)
+                st.markdown(f"### Required Core Courses ({len(core_courses)} courses)")
 
-            for course in core_courses:
-                with st.expander(f"**{course['course_code']}**: {course['course_name']} ({course['credits']} credits)"):
-                    st.markdown(course['description'])
+                for course in core_courses:
+                    with st.expander(f"**{course['course_code']}**: {course['course_name']} ({course['credits']} credits)"):
+                        st.markdown(course['description'])
 
-                    prereqs = catalog_loader.get_prerequisites(explorer_school, explorer_major, course['course_code'])
-                    if prereqs:
-                        st.markdown(f"**Prerequisites:** {', '.join(prereqs)}")
-                    else:
-                        st.markdown("**Prerequisites:** None")
+                        prereqs = catalog_loader.get_prerequisites(explorer_school, explorer_major, course['course_code'])
+                        if prereqs:
+                            st.markdown(f"**Prerequisites:** {', '.join(prereqs)}")
+                        else:
+                            st.markdown("**Prerequisites:** None")
 
-        with cat_tab2:
-            electives = catalog_loader.get_elective_courses(explorer_school, explorer_major)
-            st.markdown(f"### Elective Courses ({len(electives)} courses)")
+            with cat_tab2:
+                electives = catalog_loader.get_elective_courses(explorer_school, explorer_major)
+                st.markdown(f"### Elective Courses ({len(electives)} courses)")
 
-            for course in electives:
-                with st.expander(f"**{course['course_code']}**: {course['course_name']} ({course['credits']} credits)"):
-                    st.markdown(course['description'])
+                for course in electives:
+                    with st.expander(f"**{course['course_code']}**: {course['course_name']} ({course['credits']} credits)"):
+                        st.markdown(course['description'])
 
-                    prereqs = catalog_loader.get_prerequisites(explorer_school, explorer_major, course['course_code'])
-                    if prereqs:
-                        st.markdown(f"**Prerequisites:** {', '.join(prereqs)}")
-                    else:
-                        st.markdown("**Prerequisites:** None")
+                        prereqs = catalog_loader.get_prerequisites(explorer_school, explorer_major, course['course_code'])
+                        if prereqs:
+                            st.markdown(f"**Prerequisites:** {', '.join(prereqs)}")
+                        else:
+                            st.markdown("**Prerequisites:** None")
 
-        with cat_tab3:
-            all_courses = catalog_loader.get_all_courses_for_major(explorer_school, explorer_major)
-            st.markdown(f"### All Courses in {explorer_major} ({len(all_courses)} courses)")
+            with cat_tab3:
+                all_courses = catalog_loader.get_all_courses_for_major(explorer_school, explorer_major)
+                st.markdown(f"### All Courses in {explorer_major} ({len(all_courses)} courses)")
 
-            # Search within catalog
-            search_term = st.text_input("Search courses (by code or name):")
+                # Search within catalog
+                search_term = st.text_input("Search courses (by code or name):")
 
-            filtered_courses = {}
-            for code, info in all_courses.items():
-                if search_term.lower() in code.lower() or search_term.lower() in info.get('name', '').lower():
-                    filtered_courses[code] = info
+                filtered_courses = {}
+                for code, info in all_courses.items():
+                    if search_term.lower() in code.lower() or search_term.lower() in info.get('name', '').lower():
+                        filtered_courses[code] = info
 
-            st.markdown(f"**Showing {len(filtered_courses)} course(s)**")
+                st.markdown(f"**Showing {len(filtered_courses)} course(s)**")
 
-            # Display as cards
-            for code, info in sorted(filtered_courses.items()):
-                col_c1, col_c2, col_c3 = st.columns([2, 1, 1])
+                # Display as cards
+                for code, info in sorted(filtered_courses.items()):
+                    col_c1, col_c2, col_c3 = st.columns([2, 1, 1])
 
-                with col_c1:
-                    st.markdown(f"**{code}**: {info.get('name', 'Unknown')}")
+                    with col_c1:
+                        st.markdown(f"**{code}**: {info.get('name', 'Unknown')}")
 
-                with col_c2:
-                    st.markdown(f"**Credits:** {info.get('credits', '?')}")
+                    with col_c2:
+                        st.markdown(f"**Credits:** {info.get('credits', '?')}")
 
-                with col_c3:
-                    prereq_count = len(info.get('prerequisites', []))
-                    st.markdown(f"**Prereqs:** {prereq_count}")
+                    with col_c3:
+                        prereq_count = len(info.get('prerequisites', []))
+                        st.markdown(f"**Prereqs:** {prereq_count}")
 
-                # Expandable details
-                with st.expander(f"Details for {code}"):
-                    st.markdown(f"**Description:** {info.get('description', 'No description')}")
+                    # Expandable details
+                    with st.expander(f"Details for {code}"):
+                        st.markdown(f"**Description:** {info.get('description', 'No description')}")
 
-                    if info.get('prerequisites'):
-                        st.markdown(f"**Prerequisites:** {', '.join(info['prerequisites'])}")
+                        if info.get('prerequisites'):
+                            st.markdown(f"**Prerequisites:** {', '.join(info['prerequisites'])}")
 
-                    if info.get('corequisites'):
-                        st.markdown(f"**Corequisites:** {', '.join(info['corequisites'])}")
+                        if info.get('corequisites'):
+                            st.markdown(f"**Corequisites:** {', '.join(info['corequisites'])}")
 
-                    st.markdown(f"**Minimum Grade:** {info.get('min_grade', 'C')}")
+                        st.markdown(f"**Minimum Grade:** {info.get('min_grade', 'C')}")
 
 with tab2:
     st.markdown("### 🔍 Course Prerequisite Lookup")
