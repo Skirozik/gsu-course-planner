@@ -5,6 +5,8 @@ Extracts course requirements and progress from GSU academic evaluation PDFs
 
 import PyPDF2
 import re
+import json
+import os
 from typing import Dict, List, Optional
 from io import BytesIO
 
@@ -362,6 +364,105 @@ def parse_requirements_summary(text: str) -> Dict:
     return summary
 
 
+def _load_course_names(school: str) -> Dict[str, str]:
+    """Load course code -> course name mapping from all available sources"""
+    names = {}
+    catalog_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'course_catalogs')
+
+    # Load ALL catalog files to cover multiple departments
+    try:
+        for filename in os.listdir(catalog_dir):
+            if filename.endswith('.json'):
+                filepath = os.path.join(catalog_dir, filename)
+                try:
+                    with open(filepath, 'r') as f:
+                        catalog = json.load(f)
+
+                    # Pull names from the "courses" section
+                    courses = catalog.get("courses", {})
+                    for code, info in courses.items():
+                        if isinstance(info, dict):
+                            names[code] = info.get("name", "")
+
+                    # Also pull from degree_requirements sections
+                    deg_reqs = catalog.get("degree_requirements", {})
+                    for section in deg_reqs:
+                        items = deg_reqs[section]
+                        if isinstance(items, list):
+                            for course in items:
+                                code = course.get("course_code", "")
+                                name = course.get("course_name", "")
+                                if code and name:
+                                    names[code] = name
+                except Exception:
+                    continue
+    except Exception:
+        pass
+
+    # Fallback: try the prerequisites database
+    try:
+        from utils.prerequisites import COURSE_DATABASE
+        for code, info in COURSE_DATABASE.items():
+            if code not in names:
+                names[code] = info.get("name", "")
+    except ImportError:
+        pass
+
+    # Common GSU cross-department courses that CS students often need
+    common_courses = {
+        # CIS courses
+        "CIS 2010": "Computer Information Systems",
+        "CIS 3100": "Management Information Systems",
+        "CIS 3260": "Business Application Programming",
+        "CIS 3300": "Systems Analysis",
+        "CIS 3310": "Database Management",
+        "CIS 4120": "Networking Concepts",
+        "CIS 4130": "Information Security",
+        # English
+        "ENGL 1101": "English Composition I",
+        "ENGL 1102": "English Composition II",
+        "ENGL 1103": "Advanced English Composition",
+        # History
+        "HIST 2110": "Survey of United States History to 1877",
+        "HIST 2111": "Survey of United States History Since 1877",
+        # Political Science
+        "POLS 1101": "American Government",
+        # Economics
+        "ECON 2105": "Principles of Macroeconomics",
+        "ECON 2106": "Principles of Microeconomics",
+        # Philosophy
+        "PHIL 1010": "Critical Thinking",
+        "PHIL 2020": "Ethics and Society",
+        # Science
+        "PHYS 1111": "Introductory Physics I",
+        "PHYS 1111L": "Introductory Physics I Lab",
+        "PHYS 1112": "Introductory Physics II",
+        "PHYS 1112L": "Introductory Physics II Lab",
+        "PHYS 2211": "Principles of Physics I",
+        "PHYS 2211L": "Principles of Physics I Lab",
+        "PHYS 2212": "Principles of Physics II",
+        "PHYS 2212L": "Principles of Physics II Lab",
+        "CHEM 1211": "Principles of Chemistry I",
+        "CHEM 1211L": "Principles of Chemistry I Lab",
+        "CHEM 1212": "Principles of Chemistry II",
+        "CHEM 1212L": "Principles of Chemistry II Lab",
+        # Communication
+        "COMM 1100": "Human Communication",
+        # Psychology
+        "PSYC 1101": "Introduction to Psychology",
+        # Sociology
+        "SOCI 1101": "Introduction to Sociology",
+        # Art
+        "ART 1010": "Drawing I",
+        "MUSC 1100": "Music Appreciation",
+    }
+    for code, name in common_courses.items():
+        if code not in names:
+            names[code] = name
+
+    return names
+
+
 def get_next_semester_recommendations(eval_data: Dict, school: str = "Georgia State University") -> Dict:
     """
     Analyze the evaluation data and recommend courses for next semester
@@ -376,6 +477,9 @@ def get_next_semester_recommendations(eval_data: Dict, school: str = "Georgia St
     completed_codes = [c["course_code"] for c in eval_data["completed_courses"]]
     in_progress_codes = [c["course_code"] for c in eval_data["in_progress_courses"]]
     all_taken = completed_codes + in_progress_codes
+
+    # Load course name mappings from catalog
+    course_names = _load_course_names(school)
 
     recommendations = {
         "available_courses": [],
@@ -432,6 +536,7 @@ def get_next_semester_recommendations(eval_data: Dict, school: str = "Georgia St
 
             course_info = {
                 "course_code": course_code,
+                "course_name": course_names.get(course_code, ""),
                 "credits": req["credits"],
                 "prerequisites": prereqs,
                 "prerequisites_met": prereqs_met
@@ -445,7 +550,55 @@ def get_next_semester_recommendations(eval_data: Dict, school: str = "Georgia St
                 course_info["missing_prerequisites"] = missing
                 recommendations["prerequisites_needed"].append(course_info)
 
+    # Banner API fallback: look up names for any courses still missing them
+    if "tech" not in school.lower():
+        _fill_missing_names_from_banner(recommendations["available_courses"] + recommendations["prerequisites_needed"])
+
     return recommendations
+
+
+def _fill_missing_names_from_banner(courses: List[Dict]) -> None:
+    """Look up missing course names from the GSU Banner API (in-place)"""
+    # Find courses with no name
+    missing = [c for c in courses if not c.get("course_name")]
+    if not missing:
+        return
+
+    # Group by subject to minimize API calls (one call per subject)
+    subjects_needed = set()
+    for c in missing:
+        parts = c["course_code"].split()
+        if len(parts) >= 1:
+            subjects_needed.add(parts[0])
+
+    if not subjects_needed:
+        return
+
+    try:
+        from utils.gsu_banner_api import GSUBannerAPI
+        api = GSUBannerAPI()
+        term = api.get_current_term()
+
+        # Build a lookup of course_code -> course_title from Banner
+        banner_names = {}
+        for subject in subjects_needed:
+            try:
+                raw_sections = api.search_courses(term, subject, page_max_size=100)
+                for section in (raw_sections or []):
+                    code = f"{section.get('subject', '')} {section.get('courseNumber', '')}"
+                    title = section.get("courseTitle", "")
+                    if code and title and code not in banner_names:
+                        banner_names[code] = title
+            except Exception:
+                continue
+
+        # Fill in missing names
+        for c in missing:
+            name = banner_names.get(c["course_code"], "")
+            if name:
+                c["course_name"] = name
+    except Exception:
+        pass  # If Banner API fails, just leave names empty
 
 
 # Example usage

@@ -389,13 +389,6 @@ if 'selected_school' not in st.session_state:
 if 'last_file_hash' not in st.session_state:
     st.session_state.last_file_hash = None
 
-# Initialize explanation tracking (limit to 5 per session for cost control)
-if 'explanation_count' not in st.session_state:
-    st.session_state.explanation_count = 0
-
-if 'explanations_cache' not in st.session_state:
-    st.session_state.explanations_cache = {}
-
 # Initialize catalog loader
 catalog_loader = get_catalog_loader()
 
@@ -818,11 +811,18 @@ with tab1:
                                     # Course header
                                     col1, col2 = st.columns([3, 1])
                                     with col1:
+                                        c_code = course.get('course_code', 'N/A')
+                                        c_name = course.get('course_name', '')
+                                        # Avoid showing "CIS 3300 - CIS 3300" if GPT returned code as name
+                                        if c_name and c_name != c_code and c_name != 'N/A' and c_name != 'Unknown':
+                                            display_title = f"{c_code} - {c_name}"
+                                        else:
+                                            display_title = c_code
                                         st.markdown(f"""
                                         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                                                     padding: 1rem; border-radius: 10px; margin: 0.5rem 0;">
                                             <h4 style="color: white; margin: 0;">
-                                                {course.get('course_code', 'N/A')} - {course.get('course_name', 'N/A')}
+                                                {display_title}
                                             </h4>
                                         </div>
                                         """, unsafe_allow_html=True)
@@ -956,75 +956,6 @@ with tab1:
 
                                             except Exception as e:
                                                 st.warning("Section ranking temporarily unavailable")
-
-                                    # Course explanation feature
-                                    with st.expander("❓ Why was this course recommended?"):
-                                        course_code = course.get('course_code', '')
-                                        course_name = course.get('course_name', '')
-
-                                        # Check if explanation already cached
-                                        cache_key = f"{info.get('student_id', 'unknown')}_{course_code}"
-
-                                        if cache_key in st.session_state.explanations_cache:
-                                            # Show cached explanation
-                                            st.markdown(st.session_state.explanations_cache[cache_key])
-                                        else:
-                                            # Check if limit reached
-                                            if st.session_state.explanation_count >= 5:
-                                                st.warning("⚠️ You've reached the maximum of 5 explanations per session. This helps control API costs.")
-                                                st.info("💡 Tip: Refresh the page to reset the counter if needed.")
-                                            else:
-                                                # Show button to generate explanation
-                                                if st.button("Generate AI Explanation", key=f"explain_{course_code}"):
-                                                    with st.spinner("Generating explanation..."):
-                                                        try:
-                                                            # Get recommender from earlier
-                                                            from utils.llm_integration import get_course_recommender
-                                                            recommender = get_course_recommender()
-
-                                                            if recommender:
-                                                                # Prepare data for explanation
-                                                                student_data_for_explanation = {
-                                                                    'completed_courses': eval_data.get('completed_courses', []),
-                                                                    'gpa': info.get('gpa', 0.0),
-                                                                    'total_credits': info.get('credits_applied', 0),
-                                                                    'major': info.get('major', 'Computer Science')
-                                                                }
-
-                                                                # Get available courses and requirements
-                                                                recs_for_explanation = get_next_semester_recommendations(
-                                                                    eval_data,
-                                                                    school=st.session_state.selected_school
-                                                                )
-                                                                available_courses_list = recs_for_explanation.get("available_courses", [])
-                                                                degree_requirements_dict = {
-                                                                    "required_courses": eval_data.get("required_courses", []),
-                                                                    "summary": eval_data.get("requirements_summary", {})
-                                                                }
-
-                                                                # Generate explanation
-                                                                explanation = recommender.generate_course_explanation(
-                                                                    course_code=course_code,
-                                                                    course_name=course_name,
-                                                                    student_data=student_data_for_explanation,
-                                                                    preferences=preferences,
-                                                                    available_courses=available_courses_list,
-                                                                    degree_requirements=degree_requirements_dict
-                                                                )
-
-                                                                # Cache the explanation
-                                                                st.session_state.explanations_cache[cache_key] = explanation
-                                                                st.session_state.explanation_count += 1
-
-                                                                # Display it
-                                                                st.markdown(explanation)
-                                                                st.caption(f"📊 Explanations used: {st.session_state.explanation_count}/5")
-                                                            else:
-                                                                st.error("AI explanation service unavailable. Please check your API key configuration.")
-
-                                                        except Exception as e:
-                                                            st.error(f"Unable to generate explanation: {str(e)}")
-                                                            st.info("This course was recommended based on your academic progress and degree requirements.")
 
                                     st.markdown("---")
 
