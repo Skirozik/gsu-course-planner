@@ -32,3 +32,6 @@ uploads/
 
 # Logs
 *.log
+
+# HTML reference files
+*.html
