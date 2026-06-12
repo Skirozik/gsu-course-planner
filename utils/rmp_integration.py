@@ -9,6 +9,7 @@ Note: Uses public RMP GraphQL API (no official API key required)
 
 import requests
 import json
+from pathlib import Path
 from typing import Dict, List, Optional
 import time
 from functools import lru_cache
@@ -39,10 +40,50 @@ class RateMyProfessorAPI:
 
     REQUEST_DELAY = 0.5  # Be nice to their servers
 
-    def __init__(self):
+    def __init__(self, cache_file: Optional[str] = None):
         self.last_request_time = 0
         self.session = requests.Session()
         self.session.headers.update(self.HEADERS)
+
+        # Disk-backed cache so professor lookups survive process restarts.
+        # (lru_cache only lives for the lifetime of the process.)
+        if cache_file is None:
+            cache_file = Path(__file__).resolve().parent.parent / "data" / "rmp_cache.json"
+        self.cache_file = Path(cache_file)
+        self._persistent_cache: Dict[str, Optional[Dict]] = self._load_persistent_cache()
+
+    @staticmethod
+    def _cache_key(name: str, school_id: str) -> str:
+        """Stable cache key from a professor name + school id."""
+        return f"{school_id}|{name.strip().lower()}"
+
+    def _load_persistent_cache(self) -> Dict[str, Optional[Dict]]:
+        """Load the on-disk professor cache, tolerating a missing/corrupt file."""
+        try:
+            if self.cache_file.exists():
+                with open(self.cache_file, "r", encoding="utf-8") as f:
+                    return json.load(f)
+        except (OSError, json.JSONDecodeError) as e:
+            logger.warning(f"Could not load RMP cache ({self.cache_file}): {e}")
+        return {}
+
+    def _save_persistent_cache(self) -> None:
+        """Persist the professor cache to disk (best effort)."""
+        try:
+            self.cache_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(self.cache_file, "w", encoding="utf-8") as f:
+                json.dump(self._persistent_cache, f, indent=2)
+        except OSError as e:
+            logger.warning(f"Could not save RMP cache ({self.cache_file}): {e}")
+
+    def cache_stats(self) -> Dict[str, int]:
+        """Return basic stats about the persistent cache."""
+        total = len(self._persistent_cache)
+        with_rating = sum(
+            1 for v in self._persistent_cache.values()
+            if v and v.get("rating") is not None
+        )
+        return {"total": total, "with_rating": with_rating}
 
     def _rate_limit(self):
         """Enforce rate limiting between requests"""
@@ -68,6 +109,12 @@ class RateMyProfessorAPI:
 
         # Clean professor name
         name = professor_name.strip()
+
+        # Disk-backed cache: return a previously fetched result without hitting
+        # the network. (Misses are not persisted, so transient failures retry.)
+        cache_key = self._cache_key(name, school_id)
+        if cache_key in self._persistent_cache:
+            return self._persistent_cache[cache_key]
 
         # GraphQL query to search for professor
         query = """
@@ -120,7 +167,7 @@ class RateMyProfessorAPI:
             # Get first match (usually most relevant)
             prof_data = edges[0]["node"]
 
-            return {
+            result = {
                 "id": prof_data["id"],
                 "name": f"{prof_data['firstName']} {prof_data['lastName']}",
                 "rating": round(prof_data["avgRating"], 1) if prof_data["avgRating"] else None,
@@ -129,6 +176,12 @@ class RateMyProfessorAPI:
                 "would_take_again": round(prof_data["wouldTakeAgainPercent"]) if prof_data["wouldTakeAgainPercent"] else None,
                 "department": prof_data["department"]
             }
+
+            # Persist successful lookups so future runs skip the network call.
+            self._persistent_cache[cache_key] = result
+            self._save_persistent_cache()
+
+            return result
 
         except Exception as e:
             logger.error(f"Error fetching RMP data for {name}: {e}")

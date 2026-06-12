@@ -7,10 +7,77 @@ Provides functions to export course schedules in various formats:
 - Plain text for clipboard
 """
 
-from datetime import datetime, timedelta
-from typing import List, Dict
+from datetime import datetime, timedelta, timezone
+from typing import List, Dict, Optional, Tuple
 import json
+import re
 from io import BytesIO
+
+
+def _coerce_credits(value, default: int = 3) -> int:
+    """Coerce a credits value (which may be a str from a JSON catalog) to int."""
+    try:
+        return int(float(value))
+    except (TypeError, ValueError):
+        return default
+
+
+# Single-letter day codes -> iCalendar BYDAY tokens.
+_DAY_MAP = {"M": "MO", "T": "TU", "W": "WE", "R": "TH", "F": "FR", "S": "SA", "U": "SU"}
+# BYDAY token -> Python weekday() index (Mon=0).
+_BYDAY_WEEKDAY = {"MO": 0, "TU": 1, "WE": 2, "TH": 3, "FR": 4, "SA": 5, "SU": 6}
+
+
+def _parse_days(days_str: Optional[str]) -> List[str]:
+    """Parse a day string like 'MWF' or 'TTh' into BYDAY tokens (handles Th/Su)."""
+    if not days_str:
+        return []
+    # Normalize two-letter days first so 'T' (Tue) and 'Th' (Thu) don't collide.
+    normalized = (days_str.replace("Th", "R").replace("TH", "R")
+                          .replace("Su", "U").replace("SU", "U"))
+    out: List[str] = []
+    for ch in normalized:
+        token = _DAY_MAP.get(ch.upper())
+        if token and token not in out:
+            out.append(token)
+    return out
+
+
+def _parse_time_range(time_str: Optional[str]) -> Optional[Tuple[Tuple[int, int], Tuple[int, int]]]:
+    """Parse 'MWF 10:00-10:50' / '2:00pm-3:15pm' into ((sh, sm), (eh, em)) 24h."""
+    if not time_str:
+        return None
+    m = re.search(
+        r"(\d{1,2}):(\d{2})\s*([ap]m)?\s*[-–]\s*(\d{1,2}):(\d{2})\s*([ap]m)?",
+        time_str, re.IGNORECASE,
+    )
+    if not m:
+        return None
+    sh, sm, sap, eh, em, eap = m.groups()
+
+    def to_24h(hour: int, ampm: Optional[str]) -> int:
+        if not ampm:
+            return hour
+        ampm = ampm.lower()
+        if ampm == "pm" and hour != 12:
+            return hour + 12
+        if ampm == "am" and hour == 12:
+            return 0
+        return hour
+
+    return ((to_24h(int(sh), sap), int(sm)), (to_24h(int(eh), eap), int(em)))
+
+
+def _first_meeting_date(start: datetime, bydays: List[str]) -> datetime:
+    """Advance ``start`` to the first date that falls on one of ``bydays``."""
+    target_weekdays = [_BYDAY_WEEKDAY[d] for d in bydays if d in _BYDAY_WEEKDAY]
+    if not target_weekdays:
+        return start
+    for offset in range(7):
+        candidate = start + timedelta(days=offset)
+        if candidate.weekday() in target_weekdays:
+            return candidate
+    return start
 
 try:
     from reportlab.lib.pagesizes import letter
@@ -92,7 +159,7 @@ def generate_pdf_schedule(courses: List[Dict], student_info: Dict = None) -> Byt
         for course in courses:
             course_code = course.get('course_code', 'N/A')
             course_name = course.get('course_name', 'N/A')
-            credits = course.get('credits', 3)
+            credits = _coerce_credits(course.get('credits', 3))
             professor = course.get('professor', 'TBA')
 
             # RMP data
@@ -194,6 +261,9 @@ def generate_ics_calendar(courses: List[Dict], semester_start: datetime = None) 
     # Semester typically runs 15 weeks
     semester_end = semester_start + timedelta(weeks=15)
 
+    # DTSTAMP must be a real UTC timestamp.
+    dtstamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
     ics_content = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
@@ -204,35 +274,54 @@ def generate_ics_calendar(courses: List[Dict], semester_start: datetime = None) 
         "X-WR-TIMEZONE:America/New_York",
     ]
 
-    for course in courses:
+    for index, course in enumerate(courses):
         course_code = course.get('course_code', 'Unknown')
         course_name = course.get('course_name', 'Course')
         professor = course.get('professor', 'TBA')
         location = course.get('location', 'TBA')
 
-        # Try to parse class times (if available)
-        # For now, we'll create placeholder events
-        # In a real implementation, you'd parse actual meeting times
+        # Make the UID unique per course so calendar clients don't collapse them.
+        event_id = f"{course_code.replace(' ', '')}-{index}-{semester_start.strftime('%Y%m%d')}"
+        summary = f"SUMMARY:{course_code} - {course_name}"
+        description = f"DESCRIPTION:Professor: {professor}\\nCourse: {course_code}"
+        location_line = f"LOCATION:{location}"
 
-        # Create a recurring event (placeholder - meets MW 10:00-11:15)
-        # This would need to be customized based on actual course times
+        # Use the section's real meeting days/times when we have them.
+        bydays = _parse_days(course.get('days') or course.get('time'))
+        time_range = _parse_time_range(course.get('time'))
 
-        event_id = f"{course_code.replace(' ', '')}-{semester_start.strftime('%Y%m%d')}"
-
-        ics_content.extend([
-            "BEGIN:VEVENT",
-            f"UID:{event_id}@gsucourseplanner.com",
-            f"DTSTAMP:{datetime.now().strftime('%Y%m%dT%H%M%SZ')}",
-            f"DTSTART:{semester_start.strftime('%Y%m%dT100000')}",
-            f"DTEND:{semester_start.strftime('%Y%m%dT111500')}",
-            f"RRULE:FREQ=WEEKLY;UNTIL={semester_end.strftime('%Y%m%dT235959Z')};BYDAY=MO,WE",
-            f"SUMMARY:{course_code} - {course_name}",
-            f"DESCRIPTION:Professor: {professor}\\nCourse: {course_code}",
-            f"LOCATION:{location}",
-            "STATUS:CONFIRMED",
-            "TRANSP:OPAQUE",
-            "END:VEVENT",
-        ])
+        if bydays and time_range:
+            (sh, sm), (eh, em) = time_range
+            first = _first_meeting_date(semester_start, bydays)
+            ics_content.extend([
+                "BEGIN:VEVENT",
+                f"UID:{event_id}@gsucourseplanner.com",
+                f"DTSTAMP:{dtstamp}",
+                f"DTSTART;TZID=America/New_York:{first.strftime('%Y%m%d')}T{sh:02d}{sm:02d}00",
+                f"DTEND;TZID=America/New_York:{first.strftime('%Y%m%d')}T{eh:02d}{em:02d}00",
+                f"RRULE:FREQ=WEEKLY;UNTIL={semester_end.strftime('%Y%m%dT235959Z')};BYDAY={','.join(bydays)}",
+                summary,
+                description,
+                location_line,
+                "STATUS:CONFIRMED",
+                "TRANSP:OPAQUE",
+                "END:VEVENT",
+            ])
+        else:
+            # No reliable meeting time — emit a single all-day reminder rather
+            # than inventing a fake slot that collides with every other course.
+            ics_content.extend([
+                "BEGIN:VEVENT",
+                f"UID:{event_id}@gsucourseplanner.com",
+                f"DTSTAMP:{dtstamp}",
+                f"DTSTART;VALUE=DATE:{semester_start.strftime('%Y%m%d')}",
+                f"{summary} (meeting time TBD)",
+                f"{description}\\nMeeting time not set — confirm in PAWS/OSCAR.",
+                location_line,
+                "STATUS:TENTATIVE",
+                "TRANSP:TRANSPARENT",
+                "END:VEVENT",
+            ])
 
     ics_content.append("END:VCALENDAR")
 
@@ -272,7 +361,7 @@ def generate_text_schedule(courses: List[Dict], student_info: Dict = None) -> st
     for i, course in enumerate(courses, 1):
         course_code = course.get('course_code', 'N/A')
         course_name = course.get('course_name', 'N/A')
-        credits = course.get('credits', 3)
+        credits = _coerce_credits(course.get('credits', 3))
         professor = course.get('professor', 'TBA')
 
         lines.append(f"\n{i}. {course_code} - {course_name}")
@@ -317,7 +406,7 @@ def generate_json_export(courses: List[Dict], student_info: Dict = None) -> str:
         "generated_at": datetime.now().isoformat(),
         "student_info": student_info or {},
         "courses": courses,
-        "total_credits": sum(c.get('credits', 3) for c in courses)
+        "total_credits": sum(_coerce_credits(c.get('credits', 3)) for c in courses)
     }
 
     return json.dumps(export_data, indent=2)

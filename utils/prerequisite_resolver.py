@@ -136,13 +136,15 @@ class PrerequisiteResolver:
         logic = "OR" if has_or else "AND"
 
         # Extract all course codes
-        # Pattern: DEPT #### or DEPT ####L (lab courses)
-        course_pattern = r'\b([A-Z]{2,4})\s+(\d{4}[A-Z]?)\b'
+        # Pattern: DEPT #### or DEPT ####L (lab courses). Case-insensitive because
+        # catalog text is inconsistent (e.g. "Math 1113" vs "MATH 1113"); codes are
+        # normalized to uppercase so they match the (uppercased) transcript lookup.
+        course_pattern = r'\b([A-Za-z]{2,4})\s+(\d{4}[A-Za-z]?)\b'
         matches = re.findall(course_pattern, text)
 
         requirements = []
         for dept, number in matches:
-            course_code = f"{dept} {number}"
+            course_code = f"{dept.upper()} {number.upper()}"
             requirements.append(PrerequisiteRequirement(
                 course_code=course_code,
                 min_grade=default_min_grade
@@ -340,7 +342,9 @@ class PrerequisiteResolver:
 
         # Get prerequisites of missing prerequisites
         missing_chain = []
-        completed_codes = {c['course_code'].upper().strip() for c in completed_courses}
+        completed_codes = {
+            c.get('course_code', '').upper().strip() for c in completed_courses
+        }
 
         for missing_req in result["missing_requirements"]:
             missing_code = missing_req.course_code

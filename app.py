@@ -1570,7 +1570,7 @@ with tab4:
         st.markdown("""
         <div class="course-card">
         <h3 style="color: #0039A6; margin-top: 0;">🤖 AI Recommendations</h3>
-        • Uses GPT to analyze your situation<br>
+        • Uses Claude to analyze your situation<br>
         • Matches courses to your goals<br>
         • Balances difficulty across semester<br>
         • Shows Rate My Professor ratings<br>
@@ -1685,7 +1685,7 @@ with tab5:
     Built with ❤️ by a GSU student, for GSU students.<br><br>
     Thanks to:<br>
     • Georgia State University for the course data<br>
-    • OpenAI for AI-powered recommendations<br>
+    • Anthropic (Claude) for AI-powered recommendations<br>
     • Rate My Professor for professor ratings<br>
     • Streamlit for the web framework<br>
     • The GSU community for feedback and support

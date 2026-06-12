@@ -12,6 +12,7 @@ Primary function: get_ranked_sections()
   - Best-rated professor first, TBA professors last
 """
 
+from datetime import date
 from typing import Dict, List, Optional
 from utils.rmp_integration import get_rmp_api
 from utils.professor_ranking import (
@@ -26,10 +27,24 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _current_term(today: Optional[date] = None) -> str:
+    """Return a human-readable label for the current academic term."""
+    today = today or date.today()
+    if today.month <= 4:
+        return f"Spring {today.year}"
+    if today.month <= 7:
+        return f"Summer {today.year}"
+    return f"Fall {today.year}"
+
+
+# Computed once at import; used as the default term label for section metadata.
+DEFAULT_TERM = _current_term()
+
+
 def get_ranked_sections(course_code: str,
                        sections_data: List[Dict],
                        school: str = "Georgia State University",
-                       term: str = "Spring 2026") -> List[SectionRanking]:
+                       term: str = None) -> List[SectionRanking]:
     """
     Get sections for a course ranked by professor quality
 
@@ -45,30 +60,44 @@ def get_ranked_sections(course_code: str,
                 "location": "Room 123"
             }, ...]
         school: School name for RMP lookup
-        term: Semester term
+        term: Semester term (defaults to the current term)
 
     Returns:
         List of SectionRanking objects sorted by quality (best first)
     """
-    # Extract unique instructor names
-    instructor_names = []
-    for section in sections_data:
-        instructor = section.get("instructor", "")
-        if instructor and instructor not in instructor_names:
-            instructor_names.append(instructor)
-
-    # Fetch RMP data for all instructors
+    term = term or DEFAULT_TERM
     rmp_api = get_rmp_api()
-    rmp_data_map = rmp_api.batch_search_professors(instructor_names)
 
-    # Also try normalized names
-    for raw_name in instructor_names:
+    # Resolve the school once so we query the correct RMP institution. The old
+    # code defaulted every batch lookup to GSU, returning wrong (or empty) data
+    # for Georgia Tech instructors.
+    school_id = (
+        rmp_api.GEORGIA_TECH_SCHOOL_ID
+        if "tech" in school.lower()
+        else rmp_api.GSU_SCHOOL_ID
+    )
+
+    # Do exactly ONE RMP lookup per unique normalized instructor. The lookups
+    # are lru_cached, so repeated courses taught by the same professor reuse the
+    # cached result instead of issuing another rate-limited HTTP request.
+    rmp_data_map: Dict[str, Dict] = {}
+    seen = set()
+    for section in sections_data:
+        raw_name = section.get("instructor", "")
+        if not raw_name:
+            continue
+
         identity = ProfessorNormalizer.create_identity(raw_name)
-        if identity.primary_name not in rmp_data_map:
-            # Try looking up normalized name
-            rmp_result = rmp_api.get_professor_rating(identity.primary_name, school)
-            if rmp_result:
-                rmp_data_map[identity.primary_name] = rmp_result
+        primary = identity.primary_name
+        if primary in seen or primary in ("TBA", "Unknown"):
+            continue
+        seen.add(primary)
+
+        # Search on the normalized "First Last" form (RMP matches it best) and
+        # key the result by primary_name so create_ranked_sections finds it.
+        result = rmp_api.search_professor(primary, school_id)
+        if result:
+            rmp_data_map[primary] = result
 
     # Create and rank sections
     ranked_sections = create_ranked_sections(
@@ -85,7 +114,7 @@ def get_ranked_sections(course_code: str,
 
 def get_ranked_sections_for_courses(courses_with_sections: Dict[str, List[Dict]],
                                    school: str = "Georgia State University",
-                                   term: str = "Spring 2026") -> Dict[str, List[SectionRanking]]:
+                                   term: str = None) -> Dict[str, List[SectionRanking]]:
     """
     Get ranked sections for multiple courses at once
 
@@ -123,7 +152,7 @@ def get_ranked_sections_for_courses(courses_with_sections: Dict[str, List[Dict]]
                     course_code=course_code,
                     section=s.get("section", ""),
                     instructor_raw=s.get("instructor", "TBA"),
-                    term=term
+                    term=term or DEFAULT_TERM
                 )
                 for s in sections_data
             ]

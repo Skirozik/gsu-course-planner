@@ -67,7 +67,7 @@ An AI-powered course planning assistant specifically for Georgia State Universit
 
 ## 📖 How to Use
 
-1. **Upload Your Transcript**: Download your unofficial transcript from PAWS and upload it (PDF or TXT)
+1. **Upload Your Academic Evaluation**: Export your DegreeWorks evaluation as a PDF (GSU: PAWS → DegreeWorks; Georgia Tech: OSCAR → DegreeWorks) and upload it
 2. **Fill Out Preferences**: Tell the AI about your major, career goals, schedule constraints
 3. **Generate Schedule**: Click the button and let the AI analyze and recommend courses
 4. **Review Recommendations**: See your personalized course schedule with RMP ratings
@@ -77,43 +77,42 @@ An AI-powered course planning assistant specifically for Georgia State Universit
 
 ```
 gsu-course-planner/
-├── app.py                 # Main Streamlit application
-├── requirements.txt       # Python dependencies
-├── .env.example          # Example environment variables
-├── .gitignore            # Git ignore file
-├── README.md             # This file
-├── utils/                # Helper functions (to be created)
-│   ├── transcript_parser.py
-│   ├── course_recommender.py
-│   └── llm_integration.py
-└── data/                 # Data files (to be created)
-    ├── course_catalog.json
-    └── degree_requirements.json
+├── app.py                      # Main Streamlit application
+├── requirements.txt            # Python dependencies
+├── .env.example                # Example environment variables
+├── README.md                   # This file
+├── utils/                      # Application logic
+│   ├── academic_eval_parser.py # Parse GSU DegreeWorks PDFs
+│   ├── gatech_parser.py        # Parse Georgia Tech DegreeWorks PDFs
+│   ├── catalog_loader.py       # Load/normalize course catalogs
+│   ├── llm_integration.py      # Claude (Anthropic) recommendations
+│   ├── rmp_integration.py      # Rate My Professors GraphQL client
+│   ├── professor_ranking.py    # Rank sections by professor quality
+│   ├── section_recommender.py  # Tie RMP rankings to course sections
+│   ├── gsu_banner_api.py       # Live GSU section data (Banner API)
+│   ├── gatech_banner_api.py    # Live Georgia Tech section data
+│   ├── prerequisites.py        # Prerequisite graph / lookups
+│   └── export_utils.py         # PDF / iCalendar / text exports
+└── data/                       # Course catalogs, sections, prerequisites
+    └── course_catalogs/        # One JSON catalog per major
 ```
 
 ## 🛠️ Current Status
 
-**Version:** 0.1.0 (MVP - Basic UI)
+**Version:** 0.2.0
 
 **What Works:**
-- ✅ Basic Streamlit UI with all components
-- ✅ File upload functionality
-- ✅ Preference collection forms
-- ✅ Mock schedule display
-
-**In Progress:**
-- 🔨 Transcript parsing (PDF/TXT)
-- 🔨 Claude API integration
-- 🔨 Rate My Professor scraping
-- 🔨 Course catalog data collection
-- 🔨 Degree requirements mapping
+- ✅ DegreeWorks PDF parsing for Georgia State **and** Georgia Tech
+- ✅ Claude (Anthropic) AI course recommendations
+- ✅ Rate My Professors integration with section ranking
+- ✅ Live section lookups via the schools' Banner APIs
+- ✅ Prerequisite lookup and catalog explorer
+- ✅ PDF / calendar (.ics) / text schedule exports
 
 **Planned Features:**
-- 📋 Support for multiple majors
-- 🔍 Course seat availability tracking
+- 🔍 Course seat-availability tracking
 - 📊 GPA impact predictions
-- 📅 Summer/Winter session support
-- 🌍 Study abroad integration
+- 🌍 Additional majors and schools
 
 ## 🤝 Contributing
 

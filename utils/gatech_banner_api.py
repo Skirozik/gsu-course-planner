@@ -354,15 +354,19 @@ def get_gatech_sections(course_code: str, term: Optional[str] = None) -> List[Di
         return []
 
     subject = parts[0]
-    course_number = parts[1]
 
     # Get all sections for the subject
     all_sections = api.get_all_sections(term, subject)
 
-    # Filter to just this course number
+    # Filter to exactly this course (whitespace/case-insensitive full-code match).
+    # A substring match would wrongly include e.g. CS 1331 when asked for CS 1301.
+    def _norm(code: str) -> str:
+        return "".join(str(code).split()).upper()
+
+    target = _norm(course_code)
     course_sections = [
         s for s in all_sections
-        if course_number in s["course_code"]
+        if _norm(s.get("course_code", "")) == target
     ]
 
     logger.info(f"Found {len(course_sections)} sections for {course_code}")

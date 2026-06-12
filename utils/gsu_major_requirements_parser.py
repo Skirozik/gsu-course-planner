@@ -17,7 +17,7 @@ from bs4 import BeautifulSoup
 import re
 import time
 import json
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, asdict
 
 
@@ -30,7 +30,7 @@ class MajorRequirements:
     catalog_year: str
     total_hours: int
     required_courses: Dict[str, List[str]]  # Category -> course codes
-    elective_groups: List[Dict[str, any]]
+    elective_groups: List[Dict[str, Any]]
     progression_notes: str  # Raw text
     restrictions: str  # Raw text
     source_url: str

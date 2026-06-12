@@ -222,60 +222,29 @@ def _extract_required_courses(text: str) -> List[Dict]:
     """
     required = []
 
-    # Pattern 1: Simple requirements like "Still needed:1 Class in CS 1100"
-    # This matches: Still needed:N Class(es) in DEPT NUM
-    simple_pattern = r'Still needed:(\d+)\s+Class(?:es)?\s+in\s+([A-Z]{2,5})\s+(\d{4})'
+    # A single pattern handles both simple and multiple-choice requirements:
+    #   "Still needed:1 Class in CS 1100"              -> one course
+    #   "Still needed:1 Class in CS 2050 or 2051"      -> choose one of several
+    # The trailing "(?:\s+or\s+\d{4})*" optionally captures the "or NUM" choices.
+    # Using one pass avoids the previous bug where overlapping patterns appended
+    # the same requirement two or three times.
+    pattern = r'Still needed:(\d+)\s+Class(?:es)?\s+in\s+([A-Z]{2,5})\s+(\d{4}(?:\s+or\s+\d{4})*)'
 
-    for match in re.finditer(simple_pattern, text):
+    for match in re.finditer(pattern, text):
         num_classes = int(match.group(1))
         dept = match.group(2)
-        course_num = match.group(3)
+        numbers_text = match.group(3)
+
+        # Extract every course number in the choice list.
+        numbers = re.findall(r'\d{4}', numbers_text)
+        course_codes = [f"{dept} {num}" for num in numbers]
+        is_choice = len(course_codes) > 1
 
         required.append({
-            "courses": [f"{dept} {course_num}"],
+            "courses": course_codes,
             "credits": num_classes * 3,  # Assume 3 credits per class
-            "is_choice": False,
+            "is_choice": is_choice,
             "is_elective": False
-        })
-
-    # Pattern 2: Multiple choice requirements like "Still needed:1 Class in CS 2050 or 2051"
-    # This matches: Still needed:N Class(es) in DEPT NUM or NUM or NUM
-    choice_pattern = r'Still needed:(\d+)\s+Class(?:es)?\s+in\s+([A-Z]{2,5})\s+(\d{4}(?:\s+or\s+\d{4})+)'
-
-    for match in re.finditer(choice_pattern, text):
-        num_classes = int(match.group(1))
-        dept = match.group(2)
-        numbers_text = match.group(3)
-
-        # Extract all course numbers
-        numbers = re.findall(r'\d{4}', numbers_text)
-        course_codes = [f"{dept} {num}" for num in numbers]
-
-        required.append({
-            "courses": course_codes,
-            "credits": num_classes * 3,
-            "is_choice": True,
-            "is_elective": False
-        })
-
-    # Pattern 3: Complex multi-course requirements like "3 Classes in CS 3451 or 4455 or 4460"
-    # Where only first course has dept prefix
-    multi_pattern = r'Still needed:(\d+)\s+Classes\s+in\s+([A-Z]{2,5})\s+(\d{4}(?:\s+or\s+\d{4})+)'
-
-    for match in re.finditer(multi_pattern, text):
-        num_classes = int(match.group(1))
-        dept = match.group(2)
-        numbers_text = match.group(3)
-
-        # Extract all course numbers
-        numbers = re.findall(r'\d{4}', numbers_text)
-        course_codes = [f"{dept} {num}" for num in numbers]
-
-        required.append({
-            "courses": course_codes,
-            "credits": num_classes * 3,
-            "is_choice": True,
-            "is_elective": True  # Multiple classes to choose = elective
         })
 
     return required
@@ -295,9 +264,13 @@ def _generate_requirements_summary(student_info: Dict, required_courses: List[Di
 
 # Test function
 if __name__ == "__main__":
-    # Test with Nhi's PDF
-    test_pdf_path = "/Users/zekeyeagar/Documents/gsu-course-planner-master/Nhi academic eval.pdf"
+    import sys
 
+    if len(sys.argv) < 2:
+        print("Usage: python -m utils.gatech_parser <path_to_degreeworks.pdf>")
+        sys.exit(1)
+
+    test_pdf_path = sys.argv[1]
     with open(test_pdf_path, "rb") as f:
         pdf_content = f.read()
 

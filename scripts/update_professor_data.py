@@ -1,158 +1,151 @@
 """
-Automated Professor Data Update Script
+Professor Data Pre-Warm Script
 
-Runs periodically to:
-1. Fetch latest GSU course schedule
-2. Extract unique professor names
-3. Update RMP data for all professors
-4. Cache results for fast app performance
+Pre-populates the persistent Rate My Professors cache so the app rarely has to
+hit RMP live during a user session.
 
-Schedule: Run daily during registration period, weekly otherwise
+How it works:
+1. Pull the current term's sections from the school's live Banner API.
+2. Extract and normalize every real instructor name.
+3. Look each one up via the RMP client, which writes results through to the
+   on-disk cache (data/rmp_cache.json).
+
+Run it periodically (e.g. before each registration period):
+    python scripts/update_professor_data.py                 # GSU (default subjects)
+    python scripts/update_professor_data.py --school "Georgia Tech"
+    python scripts/update_professor_data.py --subjects CSC MATH CIS
 """
 
 import sys
 import os
+import argparse
+import logging
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
+from typing import List, Optional
+
 from utils.rmp_integration import get_rmp_api
-from utils.gsu_schedule_scraper import GSUScheduleScraper
-import json
-from datetime import datetime
-from typing import Dict, List
-import time
-import logging
+from utils.gsu_banner_api import GSUBannerAPI
+from utils.gatech_banner_api import GATechBannerAPI
+from utils.professor_ranking import ProfessorNormalizer
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Sensible default subjects to warm per school.
+DEFAULT_SUBJECTS = {
+    "Georgia State University": ["CSC", "MATH", "CIS", "ITEC", "ACCT", "ECON"],
+    "Georgia Tech": ["CS", "MATH"],
+}
+
 
 class ProfessorDataUpdater:
-    """
-    Updates professor RMP data automatically
-    """
+    """Pre-warms the persistent RMP cache from live Banner schedule data."""
 
-    def __init__(self, cache_file: str = "data/professor_cache.json"):
-        self.cache_file = cache_file
+    def __init__(self, school: str = "Georgia State University",
+                 subjects: Optional[List[str]] = None):
+        self.school = school
+        self.subjects = subjects or DEFAULT_SUBJECTS.get(school, ["CSC"])
         self.rmp_api = get_rmp_api()
-        self.scraper = GSUScheduleScraper()
+        self.banner_api = (
+            GATechBannerAPI() if "tech" in school.lower() else GSUBannerAPI()
+        )
 
-    def load_cache(self) -> Dict:
-        """Load cached professor data"""
-        if os.path.exists(self.cache_file):
-            with open(self.cache_file, 'r') as f:
-                return json.load(f)
-        return {}
-
-    def save_cache(self, data: Dict):
-        """Save professor data to cache"""
-        os.makedirs(os.path.dirname(self.cache_file), exist_ok=True)
-        with open(self.cache_file, 'w') as f:
-            json.dump(data, f, indent=2)
-
-    def get_all_professors_from_schedule(self, term: str = None) -> List[str]:
+    def get_all_professors_from_schedule(self, term: Optional[str] = None) -> List[str]:
         """
-        Extract all unique professor names from GSU schedule
+        Extract all unique, normalized instructor names from the live schedule.
 
         Args:
-            term: Term code (optional)
+            term: Banner term code (defaults to the current term).
 
         Returns:
-            List of professor names
+            Sorted list of normalized "First Last" professor names.
         """
-        # Get all courses being offered this term
-        # This would require scraping the entire schedule or using an API
+        if term is None:
+            term = self.banner_api.get_current_term()
 
-        # For now, return demo list - replace with actual scraping
-        logger.info("Fetching professor list from GSU schedule...")
+        logger.info(f"Fetching {self.school} schedule for term {term} "
+                    f"({len(self.subjects)} subjects)...")
 
-        # TODO: Implement actual schedule scraping
-        # professors = self.scraper.get_all_professors(term)
-
-        # Placeholder - replace with real data
-        professors = [
-            "Robert Robinson", "Sarah Chen", "David Kim",
-            "Emily Rodriguez", "Daniel Taylor", "Andrew King",
-            # ... all professors teaching this term
-        ]
-
-        return professors
-
-    def update_rmp_data(self, professors: List[str], school: str = "Georgia State University") -> Dict:
-        """
-        Fetch RMP data for all professors
-
-        Args:
-            professors: List of professor names
-            school: School name
-
-        Returns:
-            Dict mapping professor names to RMP data
-        """
-        logger.info(f"Updating RMP data for {len(professors)} professors...")
-
-        results = {}
-
-        for i, professor in enumerate(professors, 1):
-            logger.info(f"[{i}/{len(professors)}] Fetching: {professor}")
-
+        names = set()
+        for subject in self.subjects:
             try:
-                rmp_data = self.rmp_api.get_professor_rating(professor, school)
-
-                if rmp_data:
-                    results[professor] = {
-                        **rmp_data,
-                        "last_updated": datetime.now().isoformat()
-                    }
-                    logger.info(f"  ✅ Found: {rmp_data.get('rating')}/5.0")
-                else:
-                    logger.info(f"  ⚠️ Not found in RMP")
-
-                # Rate limiting
-                time.sleep(0.6)
-
+                sections = self.banner_api.get_all_sections(term, subject)
             except Exception as e:
-                logger.error(f"  ❌ Error: {e}")
+                logger.warning(f"  Could not fetch sections for {subject}: {e}")
+                continue
 
-        return results
+            for section in sections:
+                raw = section.get("instructor", "")
+                if not raw:
+                    continue
+                full_name, _, _ = ProfessorNormalizer.normalize_name(raw)
+                if full_name and full_name not in ("TBA", "Unknown"):
+                    names.add(full_name)
+
+            logger.info(f"  {subject}: {len(sections)} sections")
+
+        return sorted(names)
+
+    def update_rmp_data(self, professors: List[str]) -> int:
+        """
+        Look up each professor via RMP (results are cached to disk by the client).
+
+        Returns:
+            Number of professors for which RMP data was found.
+        """
+        logger.info(f"Looking up RMP data for {len(professors)} professors...")
+
+        found = 0
+        for i, professor in enumerate(professors, 1):
+            try:
+                rmp_data = self.rmp_api.get_professor_rating(professor, self.school)
+                if rmp_data:
+                    found += 1
+                    logger.info(f"[{i}/{len(professors)}] {professor}: "
+                                f"{rmp_data.get('rating')}/5.0")
+                else:
+                    logger.info(f"[{i}/{len(professors)}] {professor}: not found")
+            except Exception as e:
+                logger.error(f"[{i}/{len(professors)}] {professor}: error - {e}")
+
+        return found
 
     def run_update(self):
-        """
-        Run full update process
-        """
+        """Run the full pre-warm process."""
         logger.info("=" * 70)
-        logger.info("Starting Professor Data Update")
+        logger.info(f"Pre-warming RMP cache for {self.school}")
         logger.info("=" * 70)
 
-        # Load existing cache
-        cache = self.load_cache()
-        logger.info(f"Loaded cache with {len(cache)} professors")
+        professors = self.get_all_professors_from_schedule()
+        logger.info(f"Found {len(professors)} unique instructors this term")
 
-        # Get current professors
-        current_professors = self.get_all_professors_from_schedule()
-        logger.info(f"Found {len(current_professors)} professors this term")
+        if not professors:
+            logger.warning("No instructors found — is the term open and the "
+                           "Banner API reachable? Nothing to update.")
+            return
 
-        # Update RMP data
-        updated_data = self.update_rmp_data(current_professors)
+        found = self.update_rmp_data(professors)
 
-        # Merge with cache (keep old data, update with new)
-        cache.update(updated_data)
-
-        # Save cache
-        self.save_cache(cache)
-        logger.info(f"✅ Cache updated: {len(cache)} total professors")
-
-        # Summary
-        with_rmp = sum(1 for v in cache.values() if v.get('rating') is not None)
-        logger.info(f"📊 Summary: {with_rmp}/{len(cache)} have RMP data ({with_rmp/len(cache)*100:.1f}%)")
-
+        stats = self.rmp_api.cache_stats()
         logger.info("=" * 70)
-        logger.info("Update Complete!")
+        logger.info(f"✅ Done. {found}/{len(professors)} matched RMP this run.")
+        logger.info(f"📊 Cache now holds {stats['total']} entries "
+                    f"({stats['with_rating']} with ratings) at {self.rmp_api.cache_file}")
         logger.info("=" * 70)
 
 
 def main():
-    """Run the update script"""
-    updater = ProfessorDataUpdater()
+    parser = argparse.ArgumentParser(description="Pre-warm the RMP professor cache.")
+    parser.add_argument("--school", default="Georgia State University",
+                        choices=["Georgia State University", "Georgia Tech"],
+                        help="School to pull schedule data from.")
+    parser.add_argument("--subjects", nargs="+", default=None,
+                        help="Subject codes to warm (default: a per-school list).")
+    args = parser.parse_args()
+
+    updater = ProfessorDataUpdater(school=args.school, subjects=args.subjects)
     updater.run_update()
 
 

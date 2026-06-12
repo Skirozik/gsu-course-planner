@@ -41,9 +41,13 @@ class CatalogLoader:
         json_files = self.catalog_dir.glob("*.json")
         for json_file in json_files:
             try:
-                with open(json_file, 'r') as f:
+                with open(json_file, 'r', encoding='utf-8') as f:
                     catalog_data = json.load(f)
-                    
+
+                    # Normalize divergent catalog shapes into a single internal
+                    # structure (core_requirements.{core,electives,math}).
+                    self._normalize_catalog(catalog_data)
+
                     # Extract school and major info
                     school = catalog_data.get("school", "Unknown")
                     major = catalog_data.get("major", json_file.stem)
@@ -64,6 +68,76 @@ class CatalogLoader:
             except Exception as e:
                 print(f"[!] Unexpected error loading {json_file}: {e}")
     
+    def _normalize_catalog(self, catalog: Dict) -> None:
+        """
+        Normalize a catalog in place so every catalog exposes
+        ``core_requirements`` as ``{"core": [...], "electives": [...], "math": [...]}``
+        where each entry is a course dict with ``course_code``/``course_name``/
+        ``credits``/``description``.
+
+        Handles two source shapes:
+          - GSU catalogs: ``degree_requirements.{core_courses, electives, math_requirements}``
+          - Georgia Tech: ``core_requirements.{Category: [course_code, ...]}`` (bare codes)
+        """
+        existing = catalog.get("core_requirements")
+
+        # Already in the normalized shape — nothing to do.
+        if isinstance(existing, dict) and any(
+            k in existing for k in ("core", "electives", "math")
+        ):
+            return
+
+        # GSU shape: lists of full course dicts under degree_requirements.
+        deg_reqs = catalog.get("degree_requirements")
+        if isinstance(deg_reqs, dict):
+            catalog["core_requirements"] = {
+                "core": deg_reqs.get("core_courses", []),
+                "electives": deg_reqs.get("electives", []),
+                "math": deg_reqs.get("math_requirements", []),
+            }
+            return
+
+        # Georgia Tech shape: {Category: [course_code strings]}. Resolve each
+        # bare code against the catalog's own ``courses`` map to build dicts.
+        if isinstance(existing, dict):
+            courses_map = catalog.get("courses", {})
+
+            def to_course_dict(code: str) -> Dict:
+                info = courses_map.get(code, {})
+                return {
+                    "course_code": code,
+                    "course_name": info.get("name") or info.get("course_name") or code,
+                    "credits": info.get("credits", 3),
+                    "description": info.get("description", ""),
+                }
+
+            core, electives, math = [], [], []
+            for category, codes in existing.items():
+                if not isinstance(codes, list):
+                    continue
+                for code in codes:
+                    if not isinstance(code, str):
+                        continue
+                    course_dict = to_course_dict(code)
+                    if code.upper().startswith("MATH"):
+                        math.append(course_dict)
+                    elif "elective" in category.lower():
+                        electives.append(course_dict)
+                    else:
+                        core.append(course_dict)
+
+            catalog["core_requirements"] = {
+                "core": core,
+                "electives": electives,
+                "math": math,
+            }
+            return
+
+        # Unknown shape — guarantee the key exists so getters never KeyError.
+        catalog.setdefault(
+            "core_requirements", {"core": [], "electives": [], "math": []}
+        )
+
     def get_available_majors(self) -> List[str]:
         """Get list of available majors (for backward compatibility)"""
         return sorted(list(self.catalogs.keys()))
@@ -183,9 +257,36 @@ class CatalogLoader:
         completed_upper = [c.upper().strip() for c in completed_courses]
         
         prereqs = self.get_prerequisites(school, major, course_code)
+
+        # Some catalog courses have an empty structured `prerequisites` list but a
+        # populated free-text `prerequisites_raw`. Fall back to the text resolver
+        # so we honor "X or Y" logic instead of treating them as having none.
+        if not prereqs:
+            course_info = self.get_course_info(school, major, course_code) or {}
+            prereq_text = course_info.get("prerequisites_raw", "")
+            if prereq_text:
+                resolver = get_prerequisite_resolver()
+                # No grades available on this path; assume completed courses passed.
+                completed_dicts = [
+                    {"course_code": c, "grade": "A"} for c in completed_courses
+                ]
+                result = resolver.evaluate_eligibility(prereq_text, completed_dicts)
+                met = [str(r.course_code) for r in result.get("met_requirements", [])]
+                missing = (
+                    []
+                    if result["eligible"]
+                    else [str(r.course_code) for r in result.get("missing_requirements", [])]
+                )
+                return {
+                    "can_take": result["eligible"],
+                    "met": met,
+                    "missing": missing,
+                    "all_prerequisites": sorted(set(met + missing)),
+                }
+
         met = [p for p in prereqs if p in completed_upper]
         missing = [p for p in prereqs if p not in completed_upper]
-        
+
         return {
             "can_take": len(missing) == 0,
             "met": met,
@@ -473,15 +574,15 @@ def get_catalog_loader() -> CatalogLoader:
 
 # Convenience functions for backwards compatibility with prerequisites.py
 def get_course_info_from_catalog(major: str, course_code: str) -> Optional[Dict]:
-    """Get course info from the catalog"""
+    """Get course info from the catalog (searches all schools by major name)"""
     loader = get_catalog_loader()
-    return loader.get_course_info(major, course_code)
+    return loader.get_course_info(major=major, course_code=course_code)
 
 
 def get_prerequisites_from_catalog(major: str, course_code: str) -> List[str]:
-    """Get prerequisites from the catalog"""
+    """Get prerequisites from the catalog (searches all schools by major name)"""
     loader = get_catalog_loader()
-    return loader.get_prerequisites(major, course_code)
+    return loader.get_prerequisites(major=major, course_code=course_code)
 
 
 if __name__ == "__main__":
@@ -489,5 +590,5 @@ if __name__ == "__main__":
     loader = CatalogLoader()
     print("Available majors:", loader.get_available_majors())
     print("\nCS Core Courses:")
-    for course in loader.get_core_courses("Computer Science"):
+    for course in loader.get_core_courses("Georgia State University", "Computer Science"):
         print(f"  - {course['course_code']}: {course['course_name']}")

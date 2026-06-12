@@ -2,6 +2,14 @@
   "school": "Georgia Tech",
   "major": "Computer Science",
   "url": "https://catalog.gatech.edu/coursesaz/cs/",
+  "metadata": {
+    "major": "Computer Science",
+    "degree_type": "BS",
+    "university": "Georgia Tech",
+    "catalog_year": "2025-2026",
+    "total_credits_required": 122,
+    "description": "Bachelor of Science in Computer Science"
+  },
   "courses": {
     "CS 1301": {
       "name": "Introduction to Computing",
