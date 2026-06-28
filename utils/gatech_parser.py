@@ -142,40 +142,37 @@ def _extract_student_info(text: str) -> Dict:
 
 def _extract_completed_courses(text: str) -> List[Dict]:
     """
-    Extract completed courses (courses with grades A, B, C, D, F, or T for transfer)
-    Format in PDF: COURSE CODE + Title + Grade + Credits + Term (no line breaks)
-    Example: "ENGL 1101English Composition IA 3Fall 2023"
+    Extract completed courses.
+    pdfplumber puts a space between the course number and the title:
+      APPH 1040 Sci Foundation of Health A 2 Fall 2023
+      HIST 2112 United States since 1877 A 3 Spring 2024
+      BIOS 1108L Organismal Biology T 1 Fall 2024
     """
+    seen: set = set()
     completed = []
 
-    # Pattern to match course entries
-    # Looks for: DEPT NUMTitle Grade Credits Term
-    # The trick is the title starts immediately after the course number (no space)
-    pattern = r'([A-Z]{2,4})\s+(\d{4}[A-Z]?)([A-Z][a-z][A-Za-z\s&\-:,()]+?)([A-F][+-]?|T)\s+(\d+)\s*(Fall|Spring|Summer)\s+(\d{4})'
+    # [^\S\n]+ = horizontal whitespace only — prevents crossing newline boundaries
+    pattern = re.compile(
+        r'\b([A-Z]{2,5})[^\S\n]+(\d{4}[A-Z]?)[^\S\n]+([^\n]+?)[^\S\n]+([A-F][+-]?|T)[^\S\n]+(\d{1,2})[^\S\n]+(Fall|Spring|Summer)[^\S\n]+(\d{4})\b'
+    )
 
-    for match in re.finditer(pattern, text):
-        dept = match.group(1)
-        number = match.group(2)
-        title = match.group(3).strip()
-        grade = match.group(4)
-        credits = int(match.group(5))
-        semester = match.group(6)
-        year = match.group(7)
-        term = f"{semester} {year}"
+    for match in pattern.finditer(text):
+        dept, number, title, grade, credits_str, semester, year = match.groups()
+        course_code = f"{dept} {number}"
 
-        # Skip if grade is IP (in progress) or W (withdrawn)
-        if grade in ['IP', 'W']:
+        # Skip in-progress (captured by the other function) and withdrawn
+        if grade in ('W',):
             continue
-
-        # Clean up title (remove trailing single letters that might be part of grade)
-        title = re.sub(r'\s+[A-F]$', '', title)
+        if course_code in seen:
+            continue
+        seen.add(course_code)
 
         completed.append({
-            "course_code": f"{dept} {number}",
-            "course_name": title,
+            "course_code": course_code,
+            "course_name": title.strip(),
             "grade": grade,
-            "credits": credits,
-            "term": term
+            "credits": int(credits_str),
+            "term": f"{semester} {year}",
         })
 
     return completed
@@ -183,38 +180,30 @@ def _extract_completed_courses(text: str) -> List[Dict]:
 
 def _extract_in_progress_courses(text: str) -> List[Dict]:
     """
-    Extract in-progress courses (marked as IP)
-    Format: COURSE CODECourse TitleIP (Credits) Term Year
-    Example: "MATH 1554Linear AlgebraIP (4)Spring 2026"
+    Extract in-progress courses.
+    Format: DEPT NUM Title IP (credits) Term Year
+    Example: MATH 1554 Linear Algebra IP (4) Spring 2026
     """
+    seen: set = set()
     in_progress = []
-    seen = set()  # Track duplicates
 
-    # Pattern to match in-progress courses
-    # Example: CS 1332Data Struct & AlgorithmsIP (3)Spring 2026
-    pattern = r'([A-Z]{2,4})\s+(\d{4}[A-Z]?)([A-Z][a-z][A-Za-z\s&\-:,()]+?)IP\s+\((\d+)\)\s*(Fall|Spring|Summer)\s+(\d{4})'
+    pattern = re.compile(
+        r'\b([A-Z]{2,5})[^\S\n]+(\d{4}[A-Z]?)[^\S\n]+([^\n]+?)[^\S\n]+IP[^\S\n]+\((\d{1,2})\)[^\S\n]+(Fall|Spring|Summer)[^\S\n]+(\d{4})\b'
+    )
 
-    for match in re.finditer(pattern, text):
-        dept = match.group(1)
-        number = match.group(2)
-        title = match.group(3).strip()
-        credits = int(match.group(4))
-        semester = match.group(5)
-        year = match.group(6)
-        term = f"{semester} {year}"
-
+    for match in pattern.finditer(text):
+        dept, number, title, credits_str, semester, year = match.groups()
         course_code = f"{dept} {number}"
 
-        # Skip duplicates
         if course_code in seen:
             continue
         seen.add(course_code)
 
         in_progress.append({
             "course_code": course_code,
-            "course_name": title,
-            "credits": credits,
-            "term": term
+            "course_name": title.strip(),
+            "credits": int(credits_str),
+            "term": f"{semester} {year}",
         })
 
     return in_progress
@@ -228,12 +217,10 @@ def _extract_required_courses(text: str) -> List[Dict]:
     """
     required = []
 
-    # Handles both simple and multiple-choice requirements, including cross-dept:
+    # Handles simple and multiple-choice requirements, including cross-dept:
     #   "Still needed: 1 Class in CS 1100"
     #   "Still needed: 1 Class in CS 2050 or 2051"
     #   "Still needed: 1 Class in MATH 3215 or 3670 or CEE 3770 or ISYE 3770"
-    # \s* after colon handles "Still needed: 1" (space) AND "Still needed:1" (no space).
-    # The rest group captures same-dept and cross-dept "or" alternatives.
     pattern = re.compile(
         r'Still\s+needed:\s*(\d+)\s+Class(?:es)?\s+in\s+([A-Z]{2,5})\s+(\d{4})'
         r'((?:\s+or\s+(?:[A-Z]{2,5}\s+)?\d{4})*)',
