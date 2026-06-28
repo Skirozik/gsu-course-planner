@@ -5,7 +5,6 @@ Parses Georgia Tech DegreeWorks PDF academic evaluations.
 Different format from GSU, so requires separate parser.
 """
 
-import PyPDF2
 import re
 from typing import Dict, List, Optional
 from io import BytesIO
@@ -14,51 +13,58 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _extract_text(pdf_content: bytes) -> str:
+    """Extract text from PDF using pdfplumber with PyPDF2 fallback."""
+    # Try pdfplumber first — handles modern PDFs better
+    try:
+        import pdfplumber
+        with pdfplumber.open(BytesIO(pdf_content)) as pdf:
+            pages = [p.extract_text() or "" for p in pdf.pages]
+            text = "\n".join(pages)
+            if text.strip():
+                return text
+    except Exception as e:
+        logger.warning(f"pdfplumber failed, falling back to PyPDF2: {e}")
+
+    # Fallback to PyPDF2
+    try:
+        import PyPDF2
+        reader = PyPDF2.PdfReader(BytesIO(pdf_content))
+        return "\n".join(page.extract_text() or "" for page in reader.pages)
+    except Exception as e:
+        logger.error(f"PyPDF2 also failed: {e}")
+        raise ValueError(f"Could not extract text from PDF: {e}")
+
+
 def parse_gatech_degreeworks(pdf_content: bytes) -> Dict:
     """
-    Parse Georgia Tech DegreeWorks PDF
-
-    Args:
-        pdf_content: PDF file content as bytes
-
-    Returns:
-        Dict with student info, completed courses, in-progress courses, required courses
+    Parse Georgia Tech DegreeWorks PDF.
+    Returns a valid structure even when regex finds nothing — never raises on
+    partial parse so the frontend can still proceed with whatever data we got.
     """
-    try:
-        # Open PDF from bytes using PyPDF2
-        pdf_file = BytesIO(pdf_content)
-        pdf_reader = PyPDF2.PdfReader(pdf_file)
+    full_text = _extract_text(pdf_content)
 
-        # Extract all text
-        full_text = ""
-        for page in pdf_reader.pages:
-            full_text += page.extract_text()
+    if not full_text.strip():
+        raise ValueError("PDF appears to be empty or image-only (no extractable text).")
 
-        pdf_file.close()
+    student_info = _extract_student_info(full_text)
+    completed_courses = _extract_completed_courses(full_text)
+    in_progress_courses = _extract_in_progress_courses(full_text)
+    required_courses = _extract_required_courses(full_text)
 
-        # Parse student information
-        student_info = _extract_student_info(full_text)
+    logger.info(
+        f"GT parse: {len(completed_courses)} completed, "
+        f"{len(in_progress_courses)} in-progress, "
+        f"{len(required_courses)} requirements"
+    )
 
-        # Parse courses
-        completed_courses = _extract_completed_courses(full_text)
-        in_progress_courses = _extract_in_progress_courses(full_text)
-        required_courses = _extract_required_courses(full_text)
-
-        result = {
-            "student_info": student_info,
-            "completed_courses": completed_courses,
-            "in_progress_courses": in_progress_courses,
-            "required_courses": required_courses,
-            "requirements_summary": _generate_requirements_summary(
-                student_info, required_courses
-            )
-        }
-
-        return result
-
-    except Exception as e:
-        logger.error(f"Error parsing Georgia Tech DegreeWorks: {e}")
-        raise
+    return {
+        "student_info": student_info,
+        "completed_courses": completed_courses,
+        "in_progress_courses": in_progress_courses,
+        "required_courses": required_courses,
+        "requirements_summary": _generate_requirements_summary(student_info, required_courses),
+    }
 
 
 def _extract_student_info(text: str) -> Dict:
