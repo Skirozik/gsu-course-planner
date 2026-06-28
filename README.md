@@ -1,6 +1,6 @@
-# 🎓 GSU Course Planning AI
+# 🎓 GSU & Georgia Tech Course Planning AI
 
-An AI-powered course planning assistant specifically for Georgia State University students that analyzes transcripts, recommends courses, and integrates Rate My Professor data.
+An AI-powered course planning assistant for Georgia State University and Georgia Tech students that analyzes transcripts, recommends courses, and integrates Rate My Professor data.
 
 ## ✨ Features
 
@@ -116,7 +116,7 @@ gsu-course-planner/
 
 ## 🤝 Contributing
 
-This is a student project! If you're a GSU student and want to help:
+This is a student project! If you're a GSU or Georgia Tech student and want to help:
 
 1. Test the app and report bugs
 2. Share your transcript format (anonymized) to improve parsing
@@ -125,7 +125,7 @@ This is a student project! If you're a GSU student and want to help:
 
 ## ⚠️ Important Disclaimers
 
-- **Not Official**: This is NOT official Georgia State University software
+- **Not Official**: This is NOT official Georgia State University or Georgia Tech software
 - **Verify Everything**: Always verify course plans with your academic advisor
 - **Privacy**: We don't permanently store your transcript data
 - **Accuracy**: Course recommendations are AI-generated and may have errors
@@ -133,7 +133,7 @@ This is a student project! If you're a GSU student and want to help:
 
 ## 📝 License
 
-This project is for educational purposes. Not affiliated with Georgia State University.
+This project is for educational purposes. Not affiliated with Georgia State University or Georgia Tech.
 
 ## 🆘 Troubleshooting
 
@@ -158,6 +158,6 @@ Questions? Feedback? Found a bug?
 
 ---
 
-Built with ❤️ by a GSU student, for GSU students.
+Built with ❤️ by a GSU student, for GSU and Georgia Tech students.
 
 **Current Development Phase:** Week 3-4 (MVP Development)
