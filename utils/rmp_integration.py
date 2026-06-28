@@ -12,7 +12,6 @@ import json
 from pathlib import Path
 from typing import Dict, List, Optional
 import time
-from functools import lru_cache
 
 import logging
 logger = logging.getLogger(__name__)
@@ -92,31 +91,25 @@ class RateMyProfessorAPI:
             time.sleep(self.REQUEST_DELAY - elapsed)
         self.last_request_time = time.time()
 
-    @lru_cache(maxsize=500)
-    def search_professor(self, professor_name: str, school_id: str = None) -> Optional[Dict]:
+    def search_professor(self, professor_name: str, school_id: Optional[str] = None) -> Optional[Dict]:
         """
-        Search for a professor by name at a specific school
+        Search for a professor by name at a specific school.
 
-        Args:
-            professor_name: Full name or last name of professor
-            school_id: RMP school ID (defaults to GSU)
-
-        Returns:
-            Dict with professor data or None if not found
+        Picks the result whose last name best matches the query (case-insensitive),
+        breaking ties by highest numRatings. Falls back to the highest-rated result
+        if no last-name match exists (handles single-word queries like "Smith").
         """
         if school_id is None:
             school_id = self.GSU_SCHOOL_ID
 
-        # Clean professor name
         name = professor_name.strip()
 
-        # Disk-backed cache: return a previously fetched result without hitting
-        # the network. (Misses are not persisted, so transient failures retry.)
+        # _persistent_cache is loaded from disk at startup and updated on every
+        # successful network fetch, so it already serves as an in-memory cache.
         cache_key = self._cache_key(name, school_id)
         if cache_key in self._persistent_cache:
             return self._persistent_cache[cache_key]
 
-        # GraphQL query to search for professor
         query = """
         query NewSearchTeachersQuery($text: String!, $schoolID: ID!) {
           newSearch {
@@ -138,16 +131,11 @@ class RateMyProfessorAPI:
         }
         """
 
-        variables = {
-            "text": name,
-            "schoolID": school_id
-        }
-
         try:
             self._rate_limit()
             response = self.session.post(
                 self.BASE_URL,
-                json={"query": query, "variables": variables},
+                json={"query": query, "variables": {"text": name, "schoolID": school_id}},
                 timeout=10
             )
 
@@ -155,32 +143,47 @@ class RateMyProfessorAPI:
                 logger.warning(f"RMP API returned {response.status_code} for {name}")
                 return None
 
-            data = response.json()
-
-            # Extract professor data
-            edges = data.get("data", {}).get("newSearch", {}).get("teachers", {}).get("edges", [])
+            edges = (
+                response.json()
+                .get("data", {})
+                .get("newSearch", {})
+                .get("teachers", {})
+                .get("edges", [])
+            )
 
             if not edges:
-                logger.info(f"No RMP data found for professor: {name}")
+                logger.info(f"No RMP data found for: {name}")
                 return None
 
-            # Get first match (usually most relevant)
-            prof_data = edges[0]["node"]
+            # Build candidate list
+            candidates = [e["node"] for e in edges]
+
+            # Search tokens: all words in the query lowercased
+            query_tokens = {t.lower() for t in name.split()}
+
+            def match_score(node):
+                last = (node.get("lastName") or "").lower()
+                first = (node.get("firstName") or "").lower()
+                # How many query tokens appear in the candidate's full name
+                full = f"{first} {last}"
+                token_hits = sum(1 for t in query_tokens if t in full)
+                num_ratings = node.get("numRatings") or 0
+                return (token_hits, num_ratings)
+
+            best = max(candidates, key=match_score)
 
             result = {
-                "id": prof_data["id"],
-                "name": f"{prof_data['firstName']} {prof_data['lastName']}",
-                "rating": round(prof_data["avgRating"], 1) if prof_data["avgRating"] else None,
-                "difficulty": round(prof_data["avgDifficulty"], 1) if prof_data["avgDifficulty"] else None,
-                "num_ratings": prof_data["numRatings"],
-                "would_take_again": round(prof_data["wouldTakeAgainPercent"]) if prof_data["wouldTakeAgainPercent"] else None,
-                "department": prof_data["department"]
+                "id": best["id"],
+                "name": f"{best['firstName']} {best['lastName']}",
+                "rating": round(best["avgRating"], 1) if best["avgRating"] else None,
+                "difficulty": round(best["avgDifficulty"], 1) if best["avgDifficulty"] else None,
+                "num_ratings": best["numRatings"],
+                "would_take_again": round(best["wouldTakeAgainPercent"]) if best["wouldTakeAgainPercent"] else None,
+                "department": best["department"],
             }
 
-            # Persist successful lookups so future runs skip the network call.
             self._persistent_cache[cache_key] = result
             self._save_persistent_cache()
-
             return result
 
         except Exception as e:
