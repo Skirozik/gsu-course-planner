@@ -2,67 +2,99 @@
 Georgia Tech DegreeWorks Parser
 
 Parses Georgia Tech DegreeWorks PDF academic evaluations.
-Different format from GSU, so requires separate parser.
+Uses pdfplumber as primary extractor (handles DegreeWorks PDFs reliably),
+falls back to PyPDF2 if pdfplumber is not available.
 """
 
-import PyPDF2
 import re
-from typing import Dict, List, Optional
+from typing import Dict, List
 from io import BytesIO
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-def parse_gatech_degreeworks(pdf_content: bytes) -> Dict:
-    """
-    Parse Georgia Tech DegreeWorks PDF
-
-    Args:
-        pdf_content: PDF file content as bytes
-
-    Returns:
-        Dict with student info, completed courses, in-progress courses, required courses
-    """
+def _extract_text_from_pdf(pdf_content: bytes) -> str:
+    """Extract text from PDF using pdfplumber (preferred) or PyPDF2 fallback."""
+    # Try pdfplumber first — handles complex multi-column layouts much better
     try:
-        # Open PDF from bytes using PyPDF2
+        import pdfplumber
+        with pdfplumber.open(BytesIO(pdf_content)) as pdf:
+            pages = []
+            for page in pdf.pages:
+                text = page.extract_text(layout=False)
+                if text:
+                    pages.append(text)
+            full_text = "\n".join(pages)
+            if full_text.strip():
+                return full_text
+    except Exception as e:
+        logger.warning(f"pdfplumber extraction failed, trying PyPDF2: {e}")
+
+    # Fallback to PyPDF2
+    try:
+        import PyPDF2
         pdf_file = BytesIO(pdf_content)
         pdf_reader = PyPDF2.PdfReader(pdf_file)
-
-        # Extract all text
-        full_text = ""
+        pages = []
         for page in pdf_reader.pages:
-            full_text += page.extract_text()
-
+            text = page.extract_text()
+            if text:
+                pages.append(text)
         pdf_file.close()
-
-        # Parse student information
-        student_info = _extract_student_info(full_text)
-
-        # Parse courses
-        completed_courses = _extract_completed_courses(full_text)
-        in_progress_courses = _extract_in_progress_courses(full_text)
-        required_courses = _extract_required_courses(full_text)
-
-        result = {
-            "student_info": student_info,
-            "completed_courses": completed_courses,
-            "in_progress_courses": in_progress_courses,
-            "required_courses": required_courses,
-            "requirements_summary": _generate_requirements_summary(
-                student_info, required_courses
-            )
-        }
-
-        return result
-
+        return "\n".join(pages)
     except Exception as e:
-        logger.error(f"Error parsing Georgia Tech DegreeWorks: {e}")
-        raise
+        logger.warning(f"PyPDF2 extraction failed: {e}")
+
+    # Last resort: pypdf (modern fork of PyPDF2)
+    try:
+        from pypdf import PdfReader
+        pdf_file = BytesIO(pdf_content)
+        reader = PdfReader(pdf_file)
+        pages = [page.extract_text() or "" for page in reader.pages]
+        return "\n".join(pages)
+    except Exception as e:
+        raise RuntimeError(f"Could not extract text from PDF. Tried pdfplumber, PyPDF2, and pypdf. Last error: {e}")
+
+
+def parse_gatech_degreeworks(pdf_content: bytes) -> Dict:
+    """
+    Parse Georgia Tech DegreeWorks PDF.
+
+    Returns dict with student_info, completed_courses, in_progress_courses,
+    required_courses, and requirements_summary.
+    """
+    try:
+        full_text = _extract_text_from_pdf(pdf_content)
+    except Exception as e:
+        logger.error(f"PDF text extraction failed: {e}")
+        raise ValueError(f"Could not read PDF file. Make sure it is a valid DegreeWorks PDF. ({e})")
+
+    if not full_text or len(full_text.strip()) < 50:
+        raise ValueError(
+            "PDF appears to be empty or scanned (no extractable text). "
+            "Export from DegreeWorks as a digital PDF, not a scan."
+        )
+
+    # Verify this looks like a Georgia Tech DegreeWorks document
+    if "Georgia Tech" not in full_text and "BSCS" not in full_text and "DegreeWorks" not in full_text:
+        raise ValueError("This does not appear to be a Georgia Tech DegreeWorks PDF.")
+
+    student_info = _extract_student_info(full_text)
+    completed_courses = _extract_completed_courses(full_text)
+    in_progress_courses = _extract_in_progress_courses(full_text)
+    required_courses = _extract_required_courses(full_text)
+
+    return {
+        "student_info": student_info,
+        "completed_courses": completed_courses,
+        "in_progress_courses": in_progress_courses,
+        "required_courses": required_courses,
+        "requirements_summary": _generate_requirements_summary(student_info, required_courses),
+    }
 
 
 def _extract_student_info(text: str) -> Dict:
-    """Extract student information from PDF text"""
     info = {
         "student_name": "",
         "student_id": "",
@@ -73,57 +105,57 @@ def _extract_student_info(text: str) -> Dict:
         "school": "Georgia Tech",
         "degree": "",
         "concentration": "",
-        "college": ""
+        "college": "",
     }
 
-    # Extract student name (format: "Vo, Nhi N - 903878789" at top)
-    name_match = re.search(r'Georgia Tech\s*([^\d]+?)\s*-\s*(\d{9})', text)
+    # Student name: "Student name  Student, Sample"
+    name_match = re.search(
+        r'Student\s+name\s+([A-Za-z][A-Za-z\-]+,\s+[A-Za-z][A-Za-z\-]+(?:\s+[A-Z])?)', text
+    )
     if name_match:
         info["student_name"] = name_match.group(1).strip()
-        info["student_id"] = name_match.group(2).strip()
 
-    # Alternative: Look for "Student name" field
+    # Fallback: header "Georgia Tech  Student, Sample  000000000"
     if not info["student_name"]:
-        name_match = re.search(r'Student name\s+([A-Z][a-z]+,\s+[A-Z][a-z]+(?:\s+[A-Z])?)', text)
+        name_match = re.search(r'Georgia\s+Tech\s+([A-Za-z][A-Za-z\-]+,\s+[A-Za-z][A-Za-z\-]+)', text)
         if name_match:
             info["student_name"] = name_match.group(1).strip()
 
-    # Alternative student ID
-    if not info["student_id"]:
-        id_match = re.search(r'Student ID\s+(\d{9})', text)
-        if id_match:
-            info["student_id"] = id_match.group(1).strip()
+    # Student ID
+    id_match = re.search(r'Student\s+ID\s+(\d{7,10})', text)
+    if id_match:
+        info["student_id"] = id_match.group(1).strip()
 
-    # Extract degree
-    degree_match = re.search(r'Degree\s*(BS in [A-Za-z\s]+?)(?:Audit|Program|Major|$)', text)
+    # Degree
+    degree_match = re.search(r'Degree\s+(BS\s+in\s+[A-Za-z\s]+?)(?:Audit|Program|Major|\n)', text)
     if degree_match:
         info["degree"] = degree_match.group(1).strip()
 
-    # Extract major (look for "Major Computer Science" or similar)
-    major_match = re.search(r'Major\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+Program', text)
+    # Major
+    major_match = re.search(r'Major\s+([A-Za-z][A-Za-z\s]+?)(?:Program|Concentration|College|\n)', text)
     if major_match:
         info["major"] = major_match.group(1).strip()
 
-    # Extract concentration (format: "Concentration BSCS: Media-People")
-    concentration_match = re.search(r'Concentration\s+(BSCS:[^\n]+?)(?=\s*Program|Major|College|Degree|$)', text)
-    if concentration_match:
-        info["concentration"] = concentration_match.group(1).strip()
+    # Concentration (e.g. "BSCS: Media-People" or "BSCS: MediaPeople")
+    conc_match = re.search(r'Concentration\s+(BSCS[:\s][^\n]+?)(?:College|Program|Major|\n)', text)
+    if conc_match:
+        info["concentration"] = conc_match.group(1).strip()
 
-    # Extract college
-    college_match = re.search(r'College\s+(College of [A-Za-z\s]+?)(?=\s*BSCS|Program|Major|Degree|Concentration|$)', text)
+    # College
+    college_match = re.search(r'College\s+(College of [A-Za-z\s]+?)(?:BSCS|Program|Major|\n)', text)
     if college_match:
         info["college"] = college_match.group(1).strip()
 
-    # Extract GPA (first occurrence)
+    # Overall GPA (first match = degree-level GPA)
     gpa_match = re.search(r'GPA:\s*([\d.]+)', text)
     if gpa_match:
         try:
             info["gpa"] = float(gpa_match.group(1))
         except ValueError:
-            info["gpa"] = 0.0
+            pass
 
-    # Extract credits (format: "Credits required: 126Credits applied:  89" - note spacing)
-    credits_match = re.search(r'Credits required:\s*(\d+)\s*Credits applied:\s*(\d+)', text)
+    # Credits: "Credits required: 126 Credits applied: 89"
+    credits_match = re.search(r'Credits\s+required:\s*(\d+)\s*Credits\s+applied:\s*(\d+)', text)
     if credits_match:
         try:
             info["credits_required"] = int(credits_match.group(1))
@@ -136,70 +168,71 @@ def _extract_student_info(text: str) -> Dict:
 
 def _extract_completed_courses(text: str) -> List[Dict]:
     """
-    Extract completed courses (courses with grades A, B, C, D, F, or T for transfer)
-    Format in PDF: COURSE CODE + Title + Grade + Credits + Term (no line breaks)
-    Example: "ENGL 1101English Composition IA 3Fall 2023"
+    Extract completed courses (grade A/B/C/D/F, T for transfer, V for validation).
     """
     completed = []
+    seen = set()
 
-    # Pattern to match course entries
-    # Looks for: DEPT NUMTitle Grade Credits Term
-    # The trick is the title starts immediately after the course number (no space)
-    pattern = r'([A-Z]{2,4})\s+(\d{4}[A-Z]?)([A-Z][a-z][A-Za-z\s&\-:,()]+?)([A-F][+-]?|T)\s+(\d+)\s*(Fall|Spring|Summer)\s+(\d{4})'
+    pattern = re.compile(
+        r'\b([A-Z]{2,5})\s+(\d{4}[A-Z]?)\s+'
+        r'(.+?)\s+'
+        r'([A-F][+-]?|T|V)\s+'
+        r'(\d+)\s+'
+        r'(Fall|Spring|Summer)\s+(\d{4})',
+        re.MULTILINE
+    )
 
-    for match in re.finditer(pattern, text):
-        dept = match.group(1)
-        number = match.group(2)
-        title = match.group(3).strip()
-        grade = match.group(4)
-        credits = int(match.group(5))
-        semester = match.group(6)
-        year = match.group(7)
-        term = f"{semester} {year}"
+    for m in pattern.finditer(text):
+        dept = m.group(1)
+        num = m.group(2)
+        title = m.group(3).strip()
+        grade = m.group(4)
+        credits = int(m.group(5))
+        sem = m.group(6)
+        year = m.group(7)
 
-        # Skip if grade is IP (in progress) or W (withdrawn)
-        if grade in ['IP', 'W']:
+        course_code = f"{dept} {num}"
+        key = (course_code, grade, sem, year)
+        if key in seen:
+            continue
+        seen.add(key)
+
+        if re.match(r'^Satisfied\s+by', title, re.IGNORECASE):
             continue
 
-        # Clean up title (remove trailing single letters that might be part of grade)
-        title = re.sub(r'\s+[A-F]$', '', title)
-
         completed.append({
-            "course_code": f"{dept} {number}",
+            "course_code": course_code,
             "course_name": title,
             "grade": grade,
             "credits": credits,
-            "term": term
+            "term": f"{sem} {year}",
         })
 
     return completed
 
 
 def _extract_in_progress_courses(text: str) -> List[Dict]:
-    """
-    Extract in-progress courses (marked as IP)
-    Format: COURSE CODECourse TitleIP (Credits) Term Year
-    Example: "MATH 1554Linear AlgebraIP (4)Spring 2026"
-    """
+    """Extract in-progress courses (marked IP)."""
     in_progress = []
-    seen = set()  # Track duplicates
+    seen = set()
 
-    # Pattern to match in-progress courses
-    # Example: CS 1332Data Struct & AlgorithmsIP (3)Spring 2026
-    pattern = r'([A-Z]{2,4})\s+(\d{4}[A-Z]?)([A-Z][a-z][A-Za-z\s&\-:,()]+?)IP\s+\((\d+)\)\s*(Fall|Spring|Summer)\s+(\d{4})'
+    pattern = re.compile(
+        r'\b([A-Z]{2,5})\s+(\d{4}[A-Z]?)\s+'
+        r'(.+?)\s+'
+        r'IP\s+\((\d+)\)\s+'
+        r'(Fall|Spring|Summer)\s+(\d{4})',
+        re.MULTILINE
+    )
 
-    for match in re.finditer(pattern, text):
-        dept = match.group(1)
-        number = match.group(2)
-        title = match.group(3).strip()
-        credits = int(match.group(4))
-        semester = match.group(5)
-        year = match.group(6)
-        term = f"{semester} {year}"
+    for m in pattern.finditer(text):
+        dept = m.group(1)
+        num = m.group(2)
+        title = m.group(3).strip()
+        credits = int(m.group(4))
+        sem = m.group(5)
+        year = m.group(6)
 
-        course_code = f"{dept} {number}"
-
-        # Skip duplicates
+        course_code = f"{dept} {num}"
         if course_code in seen:
             continue
         seen.add(course_code)
@@ -208,7 +241,7 @@ def _extract_in_progress_courses(text: str) -> List[Dict]:
             "course_code": course_code,
             "course_name": title,
             "credits": credits,
-            "term": term
+            "term": f"{sem} {year}",
         })
 
     return in_progress
@@ -216,53 +249,55 @@ def _extract_in_progress_courses(text: str) -> List[Dict]:
 
 def _extract_required_courses(text: str) -> List[Dict]:
     """
-    Extract required courses that still need to be completed
-    Parse "Still needed" lines
-    Format: "Still needed:1 Class in CS 2340" (no line breaks)
+    Extract courses still needed. Handles:
+      Still needed: 1 Class in CS 1100
+      Still needed: 1 Class in CS 2050 or 2051
+      Still needed: 3 Classes in CS 3451 or 4455 or 4460 ...
+      Still needed: 1 Class in MATH 3215 or 3670 or CEE 3770 or ISYE 3770
     """
     required = []
 
-    # A single pattern handles both simple and multiple-choice requirements:
-    #   "Still needed:1 Class in CS 1100"              -> one course
-    #   "Still needed:1 Class in CS 2050 or 2051"      -> choose one of several
-    # The trailing "(?:\s+or\s+\d{4})*" optionally captures the "or NUM" choices.
-    # Using one pass avoids the previous bug where overlapping patterns appended
-    # the same requirement two or three times.
-    pattern = r'Still needed:(\d+)\s+Class(?:es)?\s+in\s+([A-Z]{2,5})\s+(\d{4}(?:\s+or\s+\d{4})*)'
+    base_pattern = re.compile(
+        r'Still\s+needed:\s*(\d+)\s+Class(?:es)?\s+in\s+([A-Z]{2,5})\s+(\d{4})'
+        r'((?:\s+or\s+(?:[A-Z]{2,5}\s+)?\d{4})*)',
+        re.IGNORECASE
+    )
 
-    for match in re.finditer(pattern, text):
-        num_classes = int(match.group(1))
-        dept = match.group(2)
-        numbers_text = match.group(3)
+    for m in base_pattern.finditer(text):
+        num_needed = int(m.group(1))
+        first_dept = m.group(2)
+        first_num = m.group(3)
+        rest = m.group(4)
 
-        # Extract every course number in the choice list.
-        numbers = re.findall(r'\d{4}', numbers_text)
-        course_codes = [f"{dept} {num}" for num in numbers]
-        is_choice = len(course_codes) > 1
+        course_codes = [f"{first_dept} {first_num}"]
+
+        for opt in re.finditer(r'or\s+(?:([A-Z]{2,5})\s+)?(\d{4})', rest, re.IGNORECASE):
+            dept = opt.group(1) if opt.group(1) else first_dept
+            course_codes.append(f"{dept} {opt.group(2)}")
 
         required.append({
             "courses": course_codes,
-            "credits": num_classes * 3,  # Assume 3 credits per class
-            "is_choice": is_choice,
-            "is_elective": False
+            "credits": num_needed * 3,
+            "is_choice": len(course_codes) > 1,
+            "is_elective": False,
         })
 
     return required
 
 
 def _generate_requirements_summary(student_info: Dict, required_courses: List[Dict]) -> Dict:
-    """Generate a summary of requirements"""
-    total_credits_needed = student_info["credits_required"] - student_info["credits_applied"]
+    credits_applied = student_info.get("credits_applied", 0)
+    credits_required = student_info.get("credits_required", 126)
+    credits_needed = max(0, credits_required - credits_applied)
 
     return {
-        "total_credits_needed": total_credits_needed,
-        "core_requirements_met": total_credits_needed < 40,  # Rough estimate
+        "total_credits_needed": credits_needed,
+        "core_requirements_met": credits_needed < 40,
         "major_requirements_remaining": len(required_courses),
-        "estimated_semesters_remaining": max(1, total_credits_needed // 15)
+        "estimated_semesters_remaining": max(1, credits_needed // 15),
     }
 
 
-# Test function
 if __name__ == "__main__":
     import sys
 
@@ -270,30 +305,25 @@ if __name__ == "__main__":
         print("Usage: python -m utils.gatech_parser <path_to_degreeworks.pdf>")
         sys.exit(1)
 
-    test_pdf_path = sys.argv[1]
-    with open(test_pdf_path, "rb") as f:
-        pdf_content = f.read()
+    with open(sys.argv[1], "rb") as f:
+        content = f.read()
 
-    result = parse_gatech_degreeworks(pdf_content)
+    result = parse_gatech_degreeworks(content)
 
-    print("=" * 70)
-    print("GEORGIA TECH DEGREEWORKS PARSER TEST")
-    print("=" * 70)
+    print("\nStudent Info:")
+    for k, v in result["student_info"].items():
+        print(f"  {k}: {v}")
 
-    print("\n📋 Student Info:")
-    for key, value in result["student_info"].items():
-        print(f"  {key}: {value}")
+    print(f"\nCompleted ({len(result['completed_courses'])}):")
+    for c in result["completed_courses"][:8]:
+        print(f"  {c['course_code']} - {c['course_name']} ({c['grade']}, {c['credits']}cr, {c['term']})")
 
-    print(f"\n✅ Completed Courses ({len(result['completed_courses'])}):")
-    for course in result["completed_courses"][:5]:
-        print(f"  {course['course_code']} - {course['course_name']} ({course['grade']}, {course['credits']} credits, {course['term']})")
+    print(f"\nIn-Progress ({len(result['in_progress_courses'])}):")
+    for c in result["in_progress_courses"]:
+        print(f"  {c['course_code']} - {c['course_name']} ({c['credits']}cr, {c['term']})")
 
-    print(f"\n📚 In-Progress Courses ({len(result['in_progress_courses'])}):")
-    for course in result["in_progress_courses"]:
-        print(f"  {course['course_code']} - {course['course_name']} ({course['credits']} credits, {course['term']})")
+    print(f"\nStill Needed ({len(result['required_courses'])}):")
+    for r in result["required_courses"][:8]:
+        print(f"  {r['courses']} ({r['credits']}cr)")
 
-    print(f"\n📝 Required Courses ({len(result['required_courses'])}):")
-    for req in result["required_courses"][:5]:
-        print(f"  {req['courses']} ({req['credits']} credits)")
-
-    print("\n" + "=" * 70)
+    print(f"\nSummary: {result['requirements_summary']}")
