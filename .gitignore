@@ -38,5 +38,6 @@ uploads/
 data/rmp_cache.json
 data/professor_cache.json
 
-# HTML reference files
+# HTML reference files (but not the Vite entry point)
 *.html
+!frontend/index.html
