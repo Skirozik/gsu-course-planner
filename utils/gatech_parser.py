@@ -156,20 +156,27 @@ def _extract_completed_courses(text: str) -> List[Dict]:
         r'\b([A-Z]{2,5})[^\S\n]+(\d{4}[A-Z]?)[^\S\n]+([^\n]+?)[^\S\n]+([A-F][+-]?|T)[^\S\n]+(\d{1,2})[^\S\n]+(Fall|Spring|Summer)[^\S\n]+(\d{4})\b'
     )
 
+    _ANNOTATION_RE = re.compile(
+        r'\s+(Max of|Satisfied by|Students may|See |Advisor will|You must|VIP Course|Choose from)',
+        re.IGNORECASE,
+    )
+
     for match in pattern.finditer(text):
         dept, number, title, grade, credits_str, semester, year = match.groups()
         course_code = f"{dept} {number}"
 
-        # Skip in-progress (captured by the other function) and withdrawn
         if grade in ('W',):
             continue
         if course_code in seen:
             continue
         seen.add(course_code)
 
+        # Strip inline PDF annotation text that bleeds into the title
+        clean_title = _ANNOTATION_RE.split(title.strip())[0].strip()
+
         completed.append({
             "course_code": course_code,
-            "course_name": title.strip(),
+            "course_name": clean_title,
             "grade": grade,
             "credits": int(credits_str),
             "term": f"{semester} {year}",
