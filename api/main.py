@@ -1,12 +1,14 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, Request
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional, List
 import sys
 import os
+import time
 import traceback
 import json
+from collections import defaultdict, deque
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
@@ -21,9 +23,23 @@ load_dotenv()
 
 app = FastAPI(title="GSU Course Planner API")
 
+# CORS locked to an allowlist. Override via the ALLOWED_ORIGINS env var
+# (comma-separated) in the host dashboard; defaults cover prod + local dev.
+_DEFAULT_ORIGINS = [
+    "https://prereqpilot.dev",
+    "https://www.prereqpilot.dev",
+    "http://localhost:5173",  # Vite dev server
+    "http://localhost:3000",
+]
+ALLOWED_ORIGINS = [
+    o.strip()
+    for o in os.getenv("ALLOWED_ORIGINS", ",".join(_DEFAULT_ORIGINS)).split(",")
+    if o.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -31,10 +47,43 @@ app.add_middleware(
 catalog_loader = get_catalog_loader()
 
 
+# ---------------------------------------------------------------------------
+# Lightweight in-memory rate limiter (per client IP, sliding window).
+# Protects the endpoints that spend Anthropic credits. Tune via env vars.
+# Note: in-memory state is per-process; fine for a single-instance deploy.
+# ---------------------------------------------------------------------------
+RATE_LIMIT_MAX = int(os.getenv("RATE_LIMIT_MAX", "20"))        # requests...
+RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", "60"))  # ...per this many seconds
+_rate_hits: defaultdict = defaultdict(deque)
+
+
+def rate_limit(request: Request):
+    # Trust the proxy-forwarded client IP (Vercel/Render set X-Forwarded-For).
+    forwarded = request.headers.get("x-forwarded-for")
+    client_ip = (
+        forwarded.split(",")[0].strip()
+        if forwarded
+        else (request.client.host if request.client else "unknown")
+    )
+
+    now = time.time()
+    hits = _rate_hits[client_ip]
+    while hits and hits[0] <= now - RATE_LIMIT_WINDOW:
+        hits.popleft()
+
+    if len(hits) >= RATE_LIMIT_MAX:
+        raise HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded. Please wait a moment and try again.",
+        )
+    hits.append(now)
+
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
+    # Log full detail server-side, but don't leak internals to the client.
     traceback.print_exc()
-    return JSONResponse(status_code=500, content={"detail": f"{type(exc).__name__}: {str(exc)}"})
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 
 class ChatMessage(BaseModel):
@@ -82,7 +131,7 @@ def normalize_eval_data(raw: dict) -> dict:
     }
 
 
-@app.post("/api/parse-transcript")
+@app.post("/api/parse-transcript", dependencies=[Depends(rate_limit)])
 async def parse_transcript(school: str, file: UploadFile = File(...)):
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are supported")
@@ -99,7 +148,7 @@ async def parse_transcript(school: str, file: UploadFile = File(...)):
         raise HTTPException(status_code=422, detail=f"Failed to parse transcript: {str(e)}")
 
 
-@app.post("/api/recommendations")
+@app.post("/api/recommendations", dependencies=[Depends(rate_limit)])
 def get_recommendations(req: PreferencesRequest):
     api_key = APIKeyManager.get_api_key()
     if not api_key:
@@ -165,7 +214,7 @@ def get_recommendations(req: PreferencesRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/api/chat")
+@app.post("/api/chat", dependencies=[Depends(rate_limit)])
 def chat(req: ChatRequest):
     api_key = APIKeyManager.get_api_key()
     if not api_key:
