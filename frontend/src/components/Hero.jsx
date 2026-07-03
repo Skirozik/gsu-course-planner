@@ -7,7 +7,7 @@ export default function Hero({ onStart }) {
           style={{ background: 'radial-gradient(ellipse, rgba(41,151,255,0.12) 0%, transparent 70%)' }} />
 
         <p className="text-blue font-semibold text-sm tracking-widest uppercase mb-5 relative z-10">
-          AI-Powered Academic Planning
+          Academic Planner
         </p>
         <h1 className="text-6xl md:text-7xl font-bold text-white tracking-tight leading-none mb-4 relative z-10">
           Plan smarter.
@@ -28,7 +28,7 @@ export default function Hero({ onStart }) {
             onMouseEnter={e => e.currentTarget.style.boxShadow = '0 0 30px rgba(41,151,255,0.45)'}
             onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
           >
-            Get started
+            Start planning
           </button>
           <a
             href="https://github.com/Skirozik/multischool-course-planner"
@@ -52,26 +52,26 @@ export default function Hero({ onStart }) {
       <section className="bg-zinc py-24 border-t border-white/10">
         <div className="max-w-5xl mx-auto px-6">
           <h2 className="text-4xl font-bold text-white tracking-tight text-center mb-4">
-            Built for serious students.
+            Everything you need to register with confidence.
           </h2>
           <p className="text-gray text-center mb-16 max-w-xl mx-auto">
-            Every feature designed to save time and remove the guesswork from registration.
+            No more cross-checking the catalog, the prerequisites, and Rate My Professor in five tabs.
           </p>
           <div className="grid md:grid-cols-3 gap-4">
             {[
-              { icon: '📄', title: 'Transcript Analysis', desc: 'Upload your DegreeWorks PDF and we extract completed courses and requirements automatically.' },
-              { icon: '🤖', title: 'Claude AI', desc: "Powered by Anthropic's Claude — the same AI behind claude.ai — for intelligent recommendations." },
-              { icon: '⭐', title: 'Professor Ratings', desc: 'Every recommendation includes live Rate My Professor data so you pick the right section.' },
-              { icon: '🗺️', title: 'Prerequisite Map', desc: 'See which courses unlock future ones and plan multiple semesters ahead.' },
-              { icon: '📅', title: 'Export Anywhere', desc: 'Download as PDF or .ics to import straight into Google Calendar or Apple Calendar.' },
-              { icon: '🏫', title: 'GSU & Georgia Tech', desc: "Full support for both schools' DegreeWorks PDF formats." },
+              { icon: (<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M7 3h7l4 4v14H7z" strokeLinejoin="round"/><path d="M14 3v4h4M9.5 12h5M9.5 15.5h5" strokeLinecap="round"/></svg>), title: 'Reads your evaluation', desc: 'Upload your DegreeWorks PDF and it pulls your completed courses and remaining requirements automatically.' },
+              { icon: (<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="5" y="5" width="14" height="14" rx="2"/><path d="M9 9h6v6H9z M12 2v3M12 19v3M2 12h3M19 12h3" strokeLinecap="round"/></svg>), title: 'Recommends what to take', desc: 'An AI advisor suggests your next semester and explains the reasoning in plain language.' },
+              { icon: (<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 4l2.3 4.7 5.2.8-3.75 3.65.9 5.15L12 15.9 7.15 18.3l.9-5.15L4.3 9.5l5.2-.8z" strokeLinejoin="round"/></svg>), title: 'Ranks the professors', desc: 'Every recommendation includes live Rate My Professor data, so you choose the right section.' },
+              { icon: (<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="6" cy="7" r="2.4"/><circle cx="18" cy="7" r="2.4"/><circle cx="12" cy="17" r="2.4"/><path d="M8 8.5l3 6.5M16 8.5l-3 6.5" strokeLinecap="round"/></svg>), title: 'Maps prerequisites', desc: 'See which courses unlock the ones you want, and plan several semesters ahead.' },
+              { icon: (<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 3v11m0 0l-4-4m4 4l4-4M5 20h14" strokeLinecap="round" strokeLinejoin="round"/></svg>), title: 'Exports anywhere', desc: 'Download your plan as a PDF, or add it straight to Google or Apple Calendar.' },
+              { icon: (<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M4 20V9l8-5 8 5v11" strokeLinejoin="round"/><path d="M4 20h16M10 20v-5h4v5" strokeLinecap="round"/></svg>), title: 'Two schools', desc: 'Full support for both Georgia State and Georgia Tech DegreeWorks formats.' },
             ].map((f) => (
               <div
                 key={f.title}
                 className="rounded-2xl p-7 border border-white/10 hover:border-white/20 transition-all"
                 style={{ background: '#242424' }}
               >
-                <div className="text-3xl mb-4">{f.icon}</div>
+                <div className="mb-4" style={{ color: '#2997FF' }}>{f.icon}</div>
                 <h3 className="text-white font-semibold mb-2 text-base">{f.title}</h3>
                 <p className="text-gray text-sm leading-relaxed">{f.desc}</p>
               </div>
@@ -84,14 +84,14 @@ export default function Hero({ onStart }) {
       <section className="bg-black py-24 border-t border-white/10 text-center">
         <div className="max-w-2xl mx-auto px-6">
           <h2 className="text-4xl font-bold text-white tracking-tight mb-4">
-            Ready to plan your semester?
+            Start with your DegreeWorks PDF.
           </h2>
-          <p className="text-gray mb-10">Takes less than 2 minutes. No account required.</p>
+          <p className="text-gray mb-10">It takes about two minutes, and you don't need an account.</p>
           <button
             onClick={onStart}
             className="bg-blue text-white px-10 py-3.5 rounded-full text-sm font-semibold hover:shadow-glow transition-all active:scale-95"
           >
-            Start planning →
+            Start planning
           </button>
         </div>
       </section>

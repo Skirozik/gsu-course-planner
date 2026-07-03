@@ -10,7 +10,7 @@ export default function Navbar({ onReset, step }) {
           onClick={onReset}
           className="text-white text-base font-semibold tracking-tight hover:opacity-70 transition-opacity"
         >
-          🎓 Course Planner
+          PrereqPilot
         </button>
 
         {step !== 'home' && (

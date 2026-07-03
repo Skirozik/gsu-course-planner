@@ -165,6 +165,43 @@ export default function Results({ results, evalData, onReset }) {
     Hard: { color: '#ff453a', background: 'rgba(255,69,58,0.1)' },
   }
 
+  const [exporting, setExporting] = useState(null)
+
+  async function exportPlan(format) {
+    if (exporting) return
+    setExporting(format)
+    try {
+      const student_info = {
+        name: evalData?.student_name || 'Student',
+        major: evalData?.major || '',
+        semester: new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' }),
+      }
+      const res = await api.post(
+        '/api/export',
+        { courses: recs, student_info, format },
+        { responseType: 'blob' }
+      )
+      const url = URL.createObjectURL(res.data)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `course-plan.${format}`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch {
+      // download failed silently; user can retry
+    } finally {
+      setExporting(null)
+    }
+  }
+
+  const exportOptions = [
+    { fmt: 'pdf', label: 'PDF', hint: 'Printable', icon: 'M7 3h7l4 4v14H7z M14 3v4h4 M9.5 12h5 M9.5 15.5h5' },
+    { fmt: 'ics', label: 'Calendar', hint: 'Google / Apple', icon: 'M4 6h16v14H4z M4 10h16 M8 3v4 M16 3v4' },
+    { fmt: 'txt', label: 'Text', hint: 'Copy anywhere', icon: 'M6 4h12 M6 9h12 M6 14h9 M6 19h6' },
+  ]
+
   return (
     <div className="relative min-h-screen bg-black pb-24 pt-20 overflow-hidden">
       {/* Background glow — same as Hero but 25% brighter */}
@@ -238,6 +275,35 @@ export default function Results({ results, evalData, onReset }) {
             ))
           )}
         </div>
+
+        {/* Export */}
+        {recs.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-lg font-bold text-white mb-4">Export your plan</h2>
+            <div className="grid grid-cols-3 gap-3">
+              {exportOptions.map((opt) => (
+                <button
+                  key={opt.fmt}
+                  onClick={() => exportPlan(opt.fmt)}
+                  disabled={exporting !== null}
+                  className="bg-zinc border border-white/10 rounded-2xl p-5 flex flex-col items-center gap-2 hover:border-blue/40 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <span style={{ color: '#2997FF' }}>
+                    {exporting === opt.fmt ? (
+                      <span className="block w-6 h-6 border-2 border-blue border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                        <path d={opt.icon} />
+                      </svg>
+                    )}
+                  </span>
+                  <span className="text-sm text-white font-semibold">{opt.label}</span>
+                  <span className="text-xs text-gray">{opt.hint}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Eligible courses */}
         {available.length > 0 && (

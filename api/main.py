@@ -1,6 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 from typing import Optional, List
 import sys
@@ -17,6 +17,7 @@ from utils.gatech_parser import parse_gatech_degreeworks
 from utils.llm_integration import CourseRecommender, APIKeyManager
 from utils.catalog_loader import get_catalog_loader
 from utils.prerequisites import check_prerequisites_met, COURSE_DATABASE
+from utils.export_utils import generate_pdf_schedule, generate_ics_calendar, generate_text_schedule
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -251,3 +252,48 @@ Answer questions about their course plan, specific course choices, prerequisites
     )
     reply = "".join(b.text for b in response.content if getattr(b, "type", None) == "text")
     return {"reply": reply}
+
+
+class ExportRequest(BaseModel):
+    courses: List[dict] = []
+    student_info: Optional[dict] = None
+    format: str = "pdf"
+
+
+@app.post("/api/export", dependencies=[Depends(rate_limit)])
+def export_plan(req: ExportRequest):
+    courses = req.courses or []
+    info = req.student_info or {}
+    fmt = (req.format or "pdf").lower()
+
+    if not courses:
+        raise HTTPException(status_code=400, detail="No courses to export")
+
+    try:
+        if fmt == "pdf":
+            buffer = generate_pdf_schedule(courses, info)
+            return Response(
+                content=buffer.getvalue(),
+                media_type="application/pdf",
+                headers={"Content-Disposition": 'attachment; filename="course-plan.pdf"'},
+            )
+        if fmt == "ics":
+            ics = generate_ics_calendar(courses)
+            return Response(
+                content=ics,
+                media_type="text/calendar",
+                headers={"Content-Disposition": 'attachment; filename="course-plan.ics"'},
+            )
+        if fmt == "txt":
+            text = generate_text_schedule(courses, info)
+            return Response(
+                content=text,
+                media_type="text/plain",
+                headers={"Content-Disposition": 'attachment; filename="course-plan.txt"'},
+            )
+        raise HTTPException(status_code=400, detail=f"Unknown export format: {fmt}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)[:100]}")
