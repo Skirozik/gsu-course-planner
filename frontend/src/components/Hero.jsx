@@ -31,7 +31,7 @@ export default function Hero({ onStart }) {
             Get started
           </button>
           <a
-            href="https://github.com/Skirozik/gsu-course-planner"
+            href="https://github.com/Skirozik/multischool-course-planner"
             target="_blank"
             rel="noopener noreferrer"
             className="text-white text-sm font-semibold px-8 py-3 rounded-full border border-white/30 hover:border-white/60 transition-all active:scale-95"

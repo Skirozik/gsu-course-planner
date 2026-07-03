@@ -50,7 +50,7 @@ class GSUPrerequisiteParser:
 
     # User-agent to identify ourselves
     HEADERS = {
-        "User-Agent": "GSU-Course-Planner-Bot/1.0 (Academic Planning Tool; +https://github.com/Skirozik/gsu-course-planner)"
+        "User-Agent": "PrereqPilot-Bot/1.0 (Academic Planning Tool; +https://github.com/Skirozik/multischool-course-planner)"
     }
 
     # Rate limiting: 1 request per second

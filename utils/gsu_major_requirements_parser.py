@@ -52,7 +52,7 @@ class GSUMajorRequirementsParser:
     CATALOG_ID = "42"  # 2025-2026 catalog
 
     HEADERS = {
-        "User-Agent": "GSU-Course-Planner-Bot/1.0 (Academic Planning Tool; +https://github.com/Skirozik/gsu-course-planner)"
+        "User-Agent": "PrereqPilot-Bot/1.0 (Academic Planning Tool; +https://github.com/Skirozik/multischool-course-planner)"
     }
 
     REQUEST_DELAY = 1.0

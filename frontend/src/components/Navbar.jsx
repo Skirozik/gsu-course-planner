@@ -27,7 +27,7 @@ export default function Navbar({ onReset, step }) {
         )}
 
         <a
-          href="https://github.com/Skirozik/gsu-course-planner"
+          href="https://github.com/Skirozik/multischool-course-planner"
           target="_blank"
           rel="noopener noreferrer"
           className="text-xs text-gray hover:text-white transition-colors"

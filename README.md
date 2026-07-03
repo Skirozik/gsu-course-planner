@@ -1,163 +1,97 @@
-# 🎓 GSU & Georgia Tech Course Planning AI
+# 🎓 PrereqPilot
 
-An AI-powered course planning assistant for Georgia State University and Georgia Tech students that analyzes transcripts, recommends courses, and integrates Rate My Professor data.
+**Live at [prereqpilot.dev](https://prereqpilot.dev)**
+
+An AI-powered course planning assistant for **Georgia State University** and **Georgia Tech** students. Upload your DegreeWorks evaluation and get a prerequisite-aware, AI-generated course schedule with live Rate My Professors ratings for each section.
 
 ## ✨ Features
 
-- 📄 **Transcript Analysis**: Upload your transcript and automatically extract completed courses
-- 🎯 **Smart Recommendations**: AI-powered course suggestions based on degree requirements
-- ⭐ **Rate My Professor Integration**: See professor ratings alongside course recommendations
-- 📊 **Progress Tracking**: Visual degree completion progress
-- 📅 **Graduation Timeline**: Predict when you'll graduate based on your course load
-- ⚖️ **Difficulty Balancing**: Distribute challenging courses across semesters
-- 🎨 **Personalized**: Takes into account work schedule, learning style, and career goals
+- 📄 **DegreeWorks parsing** — extracts completed/in-progress/required courses, GPA, and credit progress from GSU and Georgia Tech evaluations
+- 🎯 **AI recommendations** — Claude analyzes your transcript, remaining requirements, and preferences to recommend a balanced next semester
+- 🔗 **Prerequisite engine** — resolves free-text prerequisite logic (AND/OR, minimum grades) into eligibility checks
+- ⭐ **Rate My Professors integration** — ranks each course's live sections by professor quality
+- 📡 **Live section data** — pulls real-time sections directly from each school's Banner registration API
+- 🏫 **Multi-school** — Georgia State and Georgia Tech, with per-school parsers, catalogs, and APIs
 
-## 🚀 Quick Start
+## 🧱 Tech stack
 
-### Prerequisites
+| Layer | Stack |
+|---|---|
+| **Frontend** | React 19 + Vite + Tailwind CSS (`frontend/`) — deployed on **Vercel** |
+| **Backend** | FastAPI + Uvicorn (`api/main.py`) — deployed on **Render** |
+| **AI** | Anthropic Claude (`claude-sonnet-4-6`, `claude-haiku-4-5` fallback) |
+| **Integrations** | Ellucian Banner APIs (live sections), Rate My Professors GraphQL |
+| **Parsing** | pdfplumber / PyPDF2 (DegreeWorks), regex prerequisite resolver |
 
-- Python 3.8 or higher
-- A Claude API key (get one at https://console.anthropic.com/)
-
-### Installation
-
-1. **Clone or download this repository**
-
-2. **Navigate to the project directory**
-   ```bash
-   cd gsu-course-planner
-   ```
-
-3. **Create a virtual environment** (recommended)
-   ```bash
-   python -m venv venv
-   
-   # On Windows:
-   venv\Scripts\activate
-   
-   # On Mac/Linux:
-   source venv/bin/activate
-   ```
-
-4. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-5. **Set up your API key**
-   
-   Create a `.env` file in the project root:
-   ```bash
-   cp .env.example .env
-   ```
-   
-   Then edit `.env` and add your API key:
-   ```
-   ANTHROPIC_API_KEY=your_actual_api_key_here
-   ```
-
-6. **Run the app**
-   ```bash
-   streamlit run app.py
-   ```
-
-7. **Open your browser**
-   
-   The app should automatically open at `http://localhost:8501`
-
-## 📖 How to Use
-
-1. **Upload Your Academic Evaluation**: Export your DegreeWorks evaluation as a PDF (GSU: PAWS → DegreeWorks; Georgia Tech: OSCAR → DegreeWorks) and upload it
-2. **Fill Out Preferences**: Tell the AI about your major, career goals, schedule constraints
-3. **Generate Schedule**: Click the button and let the AI analyze and recommend courses
-4. **Review Recommendations**: See your personalized course schedule with RMP ratings
-5. **Export**: Download as PDF or add to your calendar
-
-## 🏗️ Project Structure
+## 🏗️ Architecture
 
 ```
-gsu-course-planner/
-├── app.py                      # Main Streamlit application
-├── requirements.txt            # Python dependencies
-├── .env.example                # Example environment variables
-├── README.md                   # This file
-├── utils/                      # Application logic
-│   ├── academic_eval_parser.py # Parse GSU DegreeWorks PDFs
-│   ├── gatech_parser.py        # Parse Georgia Tech DegreeWorks PDFs
-│   ├── catalog_loader.py       # Load/normalize course catalogs
-│   ├── llm_integration.py      # Claude (Anthropic) recommendations
-│   ├── rmp_integration.py      # Rate My Professors GraphQL client
-│   ├── professor_ranking.py    # Rank sections by professor quality
-│   ├── section_recommender.py  # Tie RMP rankings to course sections
-│   ├── gsu_banner_api.py       # Live GSU section data (Banner API)
-│   ├── gatech_banner_api.py    # Live Georgia Tech section data
-│   ├── prerequisites.py        # Prerequisite graph / lookups
-│   └── export_utils.py         # PDF / iCalendar / text exports
-└── data/                       # Course catalogs, sections, prerequisites
-    └── course_catalogs/        # One JSON catalog per major
+Browser ──▶ prereqpilot.dev (Vercel, React SPA)
+                 │  /api/* rewrites (same-origin proxy, no CORS)
+                 ▼
+        FastAPI backend (Render) ──▶ Claude · Banner · Rate My Professors
+                 │
+                 ▼
+        Shared Python logic (utils/): parsers, prerequisite engine,
+        catalog loader, professor ranking, exports
 ```
 
-## 🛠️ Current Status
+## 🚀 Local development
 
-**Version:** 0.2.0
+### 1. Backend (FastAPI)
 
-**What Works:**
-- ✅ DegreeWorks PDF parsing for Georgia State **and** Georgia Tech
-- ✅ Claude (Anthropic) AI course recommendations
-- ✅ Rate My Professors integration with section ranking
-- ✅ Live section lookups via the schools' Banner APIs
-- ✅ Prerequisite lookup and catalog explorer
-- ✅ PDF / calendar (.ics) / text schedule exports
+```bash
+# from the repo root
+python -m venv venv
+source venv/bin/activate          # Windows: venv\Scripts\activate
+pip install -r requirements.txt
 
-**Planned Features:**
-- 🔍 Course seat-availability tracking
-- 📊 GPA impact predictions
-- 🌍 Additional majors and schools
+cp .env.example .env              # then add your key:
+# ANTHROPIC_API_KEY=sk-ant-...
 
-## 🤝 Contributing
+uvicorn api.main:app --reload     # serves http://localhost:8000
+```
 
-This is a student project! If you're a GSU or Georgia Tech student and want to help:
+Get a Claude API key at <https://console.anthropic.com/>.
 
-1. Test the app and report bugs
-2. Share your transcript format (anonymized) to improve parsing
-3. Contribute course catalog data for your major
-4. Suggest features or improvements
+### 2. Frontend (React)
 
-## ⚠️ Important Disclaimers
+```bash
+cd frontend
+npm install
+npm run dev                       # serves http://localhost:5173
+```
 
-- **Not Official**: This is NOT official Georgia State University or Georgia Tech software
-- **Verify Everything**: Always verify course plans with your academic advisor
-- **Privacy**: We don't permanently store your transcript data
-- **Accuracy**: Course recommendations are AI-generated and may have errors
-- **No Guarantees**: We can't guarantee course availability or accuracy
+The dev server proxies `/api/*` to the backend. For production, `frontend/vercel.json`
+rewrites `/api/*` to the deployed backend URL.
+
+> **Legacy:** the original Streamlit prototype still lives in `app.py`
+> (`streamlit run app.py`). The React + FastAPI stack above is the current app.
+
+## 📖 How to use
+
+1. **Select your school** (Georgia State or Georgia Tech)
+2. **Upload your DegreeWorks PDF** (GSU: PAWS → DegreeWorks; GT: OSCAR → DegreeWorks)
+3. **Set preferences** — major, career goals, course load, difficulty
+4. **Generate** — get AI recommendations with RMP-ranked sections and exports
+
+## ☁️ Deployment
+
+- **Backend → Render:** `render.yaml` blueprint (start: `uvicorn api.main:app`). Set `ANTHROPIC_API_KEY` as a secret in the dashboard.
+- **Frontend → Vercel:** root directory `frontend`, Vite preset. `frontend/vercel.json` proxies `/api/*` to the Render backend (same-origin, so no CORS).
+- **CORS** is locked to the production domain via the `ALLOWED_ORIGINS` env var, and the credit-spending API endpoints are rate-limited.
+
+## ⚠️ Disclaimers
+
+- **Not official** — not affiliated with Georgia State University or Georgia Tech
+- **Verify everything** — always confirm course plans with your academic advisor
+- **Privacy** — transcript data is processed for the request and not permanently stored
+- **Accuracy** — recommendations are AI-generated and may contain errors; course availability is not guaranteed
 
 ## 📝 License
 
-This project is for educational purposes. Not affiliated with Georgia State University or Georgia Tech.
-
-## 🆘 Troubleshooting
-
-**App won't start?**
-- Make sure you've activated your virtual environment
-- Check that all dependencies are installed: `pip install -r requirements.txt`
-
-**API errors?**
-- Verify your `.env` file has the correct API key
-- Check that you have API credits remaining
-
-**Transcript won't upload?**
-- Make sure it's a PDF or TXT file
-- Check file size (keep under 10MB)
-
-## 📧 Contact
-
-Questions? Feedback? Found a bug?
-
-- Open an issue on GitHub
-- Or use the feedback form in the app
+For educational purposes. Not affiliated with Georgia State University or Georgia Tech.
 
 ---
 
-Built with ❤️ by a GSU student, for GSU and Georgia Tech students.
-
-**Current Development Phase:** Week 3-4 (MVP Development)
+Built by [@Skirozik](https://github.com/Skirozik) for GSU and Georgia Tech students.
