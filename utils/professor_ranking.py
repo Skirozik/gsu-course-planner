@@ -66,6 +66,8 @@ def format_instructor_name(name: str) -> str:
         return name
 
     name = name.strip()
+    # Strip parenthetical nicknames: "Nemira, Alina (Alina)" -> "Nemira, Alina"
+    name = re.sub(r'\s*\([^)]*\)', '', name).strip()
 
     # Check if name is in "Last, First" format
     if ',' in name:
@@ -73,7 +75,7 @@ def format_instructor_name(name: str) -> str:
         if len(parts) == 2:
             last_name, first_name = parts
             # Handle middle names or initials in first_name
-            return f"{first_name} {last_name}"
+            return f"{first_name} {last_name}".strip()
 
     # Name is already in "First Last" format or some other format
     return name
@@ -444,7 +446,7 @@ def create_ranked_sections(course_code: str,
             rating=rmp_data.get("rating") if rmp_data else None,
             difficulty=rmp_data.get("difficulty") if rmp_data else None,
             would_take_again=rmp_data.get("would_take_again") if rmp_data else None,
-            num_reviews=rmp_data.get("num_reviews") if rmp_data else None,
+            num_reviews=(rmp_data.get("num_reviews") or rmp_data.get("num_ratings")) if rmp_data else None,
             match_confidence=match_confidence,
             time=section_data.get("time"),
             days=section_data.get("days"),

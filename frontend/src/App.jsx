@@ -57,7 +57,7 @@ export default function App() {
         />
       )}
       {step === 'results' && (
-        <Results results={results} evalData={evalData} onReset={handleReset} />
+        <Results results={results} evalData={evalData} onReset={handleReset} school={school} />
       )}
     </div>
   )

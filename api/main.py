@@ -297,3 +297,103 @@ def export_plan(req: ExportRequest):
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Export failed: {str(e)[:100]}")
+
+
+@app.get("/api/sections", dependencies=[Depends(rate_limit)])
+def get_sections(course: str, school: str = "Georgia State University"):
+    """Live course sections for a course, ranked by professor quality (RMP)."""
+    from utils.gsu_banner_api import get_gsu_sections
+    from utils.gatech_banner_api import get_gatech_sections
+    from utils.section_recommender import get_ranked_sections
+
+    course = (course or "").strip()
+    if not course:
+        raise HTTPException(status_code=400, detail="Missing course code")
+
+    try:
+        if "tech" in school.lower():
+            raw_sections = get_gatech_sections(course)
+        else:
+            raw_sections = get_gsu_sections(course)
+    except Exception:
+        traceback.print_exc()
+        raise HTTPException(status_code=502, detail="Could not reach the registration system")
+
+    if not raw_sections:
+        return {"course": course, "sections": []}
+
+    ranked = get_ranked_sections(course, raw_sections, school=school)
+    sections = [
+        {
+            "section": s.section,
+            "crn": s.crn,
+            "instructor": s.instructor_normalized,
+            "time": s.time,
+            "location": s.location,
+            "rating": s.rating,
+            "difficulty": s.difficulty,
+            "num_reviews": s.num_reviews,
+            "rmp_url": s.rmp_url,
+            "rank": s.rank,
+        }
+        for s in ranked
+    ]
+    return {"course": course, "sections": sections}
+
+
+class PlanFeedbackRequest(BaseModel):
+    courses: List[dict] = []
+    student: Optional[dict] = None
+    school: str = ""
+
+
+@app.post("/api/plan-feedback", dependencies=[Depends(rate_limit)])
+def plan_feedback(req: PlanFeedbackRequest):
+    api_key = APIKeyManager.get_api_key()
+    if not api_key:
+        raise HTTPException(status_code=503, detail="API key not configured")
+    if not req.courses:
+        raise HTTPException(status_code=400, detail="No courses selected")
+
+    from anthropic import Anthropic
+    client = Anthropic(api_key=api_key)
+
+    def _credits(c):
+        try:
+            return int(float(c.get("credits", 3) or 3))
+        except (TypeError, ValueError):
+            return 3
+
+    course_lines = "\n".join(
+        f"- {c.get('course_code', '?')} {c.get('course_name', '')} ({_credits(c)} cr)"
+        for c in req.courses
+    )
+    total_credits = sum(_credits(c) for c in req.courses)
+    s = req.student or {}
+
+    system = (
+        "You are a candid, experienced academic advisor giving a student honest, specific "
+        "feedback on the schedule they have chosen. No preamble, no filler, no bullet lists — "
+        "just a few plain sentences spoken directly to the student."
+    )
+    user = f"""A {req.school or 'university'} student finalized this course selection for next semester:
+{course_lines}
+
+That is {len(req.courses)} courses and {total_credits} credits.
+
+Student profile:
+- GPA: {s.get('gpa', 'N/A')}
+- Credits completed: {s.get('total_credits', '?')} of {s.get('credits_required', 120)} toward a {s.get('major', 'their')} degree
+
+In 3 to 5 sentences, assess THIS selection: is the workload and difficulty realistic for this
+student, does it make solid progress toward the degree, and are there any sequencing or balance
+concerns? End with one concrete suggestion only if it genuinely helps."""
+
+    response = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=600,
+        system=system,
+        messages=[{"role": "user", "content": user}],
+    )
+    feedback = "".join(b.text for b in response.content if getattr(b, "type", None) == "text")
+    return {"feedback": feedback}
