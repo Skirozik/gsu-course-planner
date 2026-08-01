@@ -11,6 +11,7 @@ venv/
 env/
 ENV/
 .venv
+.pytest_cache/
 
 # IDE
 .vscode/
@@ -26,10 +27,12 @@ Thumbs.db
 # Streamlit
 .streamlit/secrets.toml
 
-# Data files (transcripts contain sensitive info)
+# Data files (real transcripts contain sensitive info — never commit them)
 data/transcripts/
 *.pdf
 uploads/
+# ...except the sanitized, fictional-student demo transcripts in samples/.
+!samples/*.pdf
 
 # Logs
 *.log
