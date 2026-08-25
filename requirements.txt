@@ -9,7 +9,12 @@ fastapi>=0.111.0
 # against this file, and a missing uvicorn means the container never boots.
 uvicorn[standard]>=0.29.0
 python-multipart>=0.0.9
-anthropic>=0.40.0
+# Upper bound is deliberate. Every requirement here is an unpinned floor, so a
+# fresh build resolves to whatever is newest -- and anthropic 1.0.0 removed the
+# `temperature` argument from Messages.create(), which took /api/recommendations
+# down on the next Render rebuild while /api/chat (which passes no temperature)
+# kept working. Raise this bound intentionally, not by rebuilding.
+anthropic>=0.40.0,<1.0.0
 pdfplumber>=0.11.0
 PyPDF2>=3.0.1
 python-dotenv>=1.0.0

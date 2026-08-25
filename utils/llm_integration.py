@@ -70,7 +70,9 @@ class CourseRecommender:
     DEFAULT_MODEL = "claude-sonnet-4-6"
     FALLBACK_MODEL = "claude-haiku-4-5-20251001"
     MAX_TOKENS = 1500
-    TEMPERATURE = 0.7
+    # No temperature is passed: anthropic 1.0.0 removed the argument from
+    # Messages.create() entirely, and the JSON contract is enforced by the system
+    # prompt plus _parse_response rather than by sampling settings.
     REQUEST_TIMEOUT = float(os.getenv("ANTHROPIC_TIMEOUT", "20"))
     SYSTEM_PROMPT = (
         "You are an academic advisor. Respond with valid JSON only — "
@@ -156,7 +158,9 @@ class CourseRecommender:
                 logger.info("✅ Generated recommendations")
                 return recommendations
             else:
-                return self._get_error_response("API call failed")
+                return self._get_error_response(
+                    f"API call failed ({getattr(self, 'last_error', 'unknown')})"
+                )
 
         except AuthenticationError:
             logger.error("Invalid API key")
@@ -173,13 +177,13 @@ class CourseRecommender:
 
     def _call_api(self, prompt: str) -> Optional[str]:
         """Call the Claude API, falling back to a cheaper model on failure"""
+        last_error = "no models attempted"
         for model in [self.model, self.FALLBACK_MODEL]:
             try:
                 logger.info(f"Trying {model}...")
                 response = self.client.messages.create(
                     model=model,
                     max_tokens=self.MAX_TOKENS,
-                    temperature=self.TEMPERATURE,
                     system=self.SYSTEM_PROMPT,
                     messages=[{"role": "user", "content": prompt}],
                 )
@@ -193,9 +197,15 @@ class CourseRecommender:
                 # These are not recoverable by switching models; let the caller handle them.
                 raise
             except Exception as e:
-                logger.warning(f"{model} failed: {e}")
+                # Keep the reason. This used to be discarded, and the caller
+                # reported a bare "API call failed" -- which is how a plain
+                # TypeError from an SDK upgrade looked identical to a network
+                # outage, with no way to tell them apart from outside.
+                last_error = f"{type(e).__name__}: {e}"
+                logger.warning(f"{model} failed: {last_error}")
                 continue
 
+        self.last_error = last_error
         return None
 
     def _build_prompt(
