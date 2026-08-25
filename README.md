@@ -82,9 +82,11 @@ The backend exposes **7 endpoints** ([`api/main.py`](api/main.py)): transcript p
 recommendations, sections, chat, plan feedback, export, and health. Credit-spending endpoints sit
 behind a per-IP sliding-window rate limiter, and CORS is restricted to an allowlist.
 
-**Legacy:** [`app.py`](app.py) is the original Streamlit prototype this project started as. It is
-kept for reference only — nothing in `api/` imports it, and it is not part of the deployed app.
-The React + FastAPI stack above is the current application.
+**Legacy:** [`legacy/streamlit_app.py`](legacy/streamlit_app.py) is the original Streamlit
+prototype this project started as. It is kept for reference only — nothing in `api/` imports it, it
+is not part of the deployed app, and its behavior has diverged from the API in several places.
+Its dependencies live in [`legacy/requirements-streamlit.txt`](legacy/requirements-streamlit.txt)
+and are deliberately not installed by any deployment.
 
 For a detailed, source-cited walkthrough of how it actually works — including the prerequisite
 engine's internals and its known limitations — see
@@ -158,10 +160,24 @@ isn't tested.
 ## Deployment
 
 - **Backend → Render**, via the [`render.yaml`](render.yaml) blueprint. `ANTHROPIC_API_KEY` is set
-  in the dashboard, never in git.
+  in the dashboard, never in git. The build installs
+  [`requirements-dev.txt`](requirements-dev.txt), because the start command runs `uvicorn`, which is
+  a server dependency rather than a runtime import.
 - **Frontend → Vercel**, root directory `frontend`, Vite preset.
   [`frontend/vercel.json`](frontend/vercel.json) rewrites `/api/*` to the backend so requests stay
   same-origin.
+
+**Migrating the backend to Vercel.** [`index.py`](index.py) and [`vercel.json`](vercel.json) at the
+repo root exist for a second Vercel project rooted at the repo root, which would remove Render — and
+with it the free-tier cold start that the client currently retries around. To use them: create a new
+Vercel project from this repo with Root Directory `.`, set `ANTHROPIC_API_KEY` and `ALLOWED_ORIGINS`,
+verify `GET /api/health` on its `.vercel.app` URL reports `"catalogs": 6, "courses": 145` (a `0`
+means the catalog data did not ship), then point `frontend/vercel.json` at it. Keep Render running
+until that has soaked.
+
+**Environment variables.** `ANTHROPIC_API_KEY` (secret) and `ALLOWED_ORIGINS` are required.
+`ANTHROPIC_TIMEOUT`, `ANTHROPIC_MAX_RETRIES`, `SECTIONS_BUDGET_S`, `RATE_LIMIT_MAX` and
+`RATE_LIMIT_WINDOW` are optional and default to values that keep every request bounded.
 
 ---
 

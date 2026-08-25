@@ -43,7 +43,7 @@ echo.
 echo 📋 Next steps:
 echo 1. Edit .env and add your ANTHROPIC_API_KEY
 echo 2. Activate the virtual environment: venv\Scripts\activate
-echo 3. Run the app: streamlit run app.py
+echo 3. Run the API: uvicorn api.main:app --reload
 echo.
 echo 🎉 Happy coding!
 
