@@ -254,7 +254,9 @@ def _parse_student_info(text: str) -> Dict:
 
 _COURSE_RE = re.compile(
     r"([A-Z]{2,5})\s+(\d{4}[A-Z]?)\s+"           # dept + number (e.g. CSC 1301, BIOL 2107L)
-    r"([A-Z][A-Z\s&\-:/]+?)\s+"                   # course name (greedy-but-minimal)
+    # Course name. The period matters: real titles include "STELLAR AND GALACTIC
+    # ASTR. LAB", and without it that course silently vanished from the audit.
+    r"([A-Z][A-Z\s&\-:/.,']+?)\s+"                # course name (greedy-but-minimal)
     r"([A-DF][+\-]?|[TWI]|IP|TR|NA)\s*"           # grade
     r"\(?(\d+)\)?\s*"                              # credits (optionally parenthesized)
     r"((?:Fall|Spring|Summer)\s+(?:Semester\s+)?\d{4})",  # term
@@ -306,7 +308,7 @@ def _parse_completed_courses(text: str) -> List[Dict]:
 
 _IN_PROGRESS_RE = re.compile(
     r"([A-Z]{2,5})\s+(\d{4}[A-Z]?)\s+"
-    r"([A-Z][A-Z\s&\-:/]+?)\s+"
+    r"([A-Z][A-Z\s&\-:/.,']+?)\s+"          # see note on the completed-course pattern
     r"(?:NA|IP)\s*"
     r"\(?(\d+)\)?\s*"
     r"((?:Fall|Spring|Summer)\s+(?:Semester\s+)?\d{4})",
@@ -315,8 +317,24 @@ _IN_PROGRESS_RE = re.compile(
 
 
 def _parse_in_progress_courses(text: str) -> List[Dict]:
-    # Try to narrow to the In-progress section first; fall back to full text
-    section_match = re.search(r"In.progress(.+?)(?:Not Counted|Legend|Still needed|$)", text, re.DOTALL | re.IGNORECASE)
+    # Narrow to the "In-progress and Preregistered" section.
+    #
+    # Anchoring on a bare "In-progress" is wrong: DegreeWorks stamps an IN-PROGRESS
+    # status badge on every partially-complete requirement block, so the first
+    # case-insensitive hit is a badge pages earlier than the real section, and the
+    # non-greedy body then stops at the first "Still needed". On a real audit that
+    # silently returned 4 of 9 registered courses, so courses the student had
+    # already registered for came back as recommendations.
+    section_match = re.search(
+        r"In.progress\s+and\s+Preregistered(.+?)(?:Not\s+Counted|Legend|$)",
+        text, re.DOTALL | re.IGNORECASE,
+    )
+    if not section_match:
+        # Other layouts (e.g. Georgia Tech) may not carry that heading.
+        section_match = re.search(
+            r"In.progress(.+?)(?:Not Counted|Legend|Still needed|$)",
+            text, re.DOTALL | re.IGNORECASE,
+        )
     search_text = section_match.group(1) if section_match else text
 
     seen = {}
