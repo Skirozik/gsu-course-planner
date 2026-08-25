@@ -57,6 +57,9 @@ RATE_LIMIT_MAX = int(os.getenv("RATE_LIMIT_MAX", "20"))        # requests...
 RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", "60"))  # ...per this many seconds
 _rate_hits: defaultdict = defaultdict(deque)
 
+# Matches the limit advertised on the upload screen.
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+
 
 def rate_limit(request: Request):
     # Trust the proxy-forwarded client IP (Vercel/Render set X-Forwarded-For).
@@ -134,19 +137,42 @@ def normalize_eval_data(raw: dict) -> dict:
 
 @app.post("/api/parse-transcript", dependencies=[Depends(rate_limit)])
 async def parse_transcript(school: str, file: UploadFile = File(...)):
-    if not file.filename.endswith(".pdf"):
+    # Browsers hand us whatever case the file was saved with; "AUDIT.PDF" is a PDF.
+    if not (file.filename or "").lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are supported")
 
     content = await file.read()
+
+    if len(content) > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail="That PDF is larger than 10 MB. Re-export just the DegreeWorks audit page.",
+        )
 
     try:
         if school == "Georgia Tech":
             raw = parse_gatech_degreeworks(content)
         else:
             raw = parse_academic_eval(content)
-        return {"success": True, "data": normalize_eval_data(raw)}
     except Exception as e:
-        raise HTTPException(status_code=422, detail=f"Failed to parse transcript: {str(e)}")
+        raise HTTPException(status_code=422, detail=f"Could not read that PDF: {str(e)[:150]}")
+
+    data = normalize_eval_data(raw)
+
+    # The parsers never raise on unrecognized content — they return an empty
+    # result. Without this check that empty result is reported as success and the
+    # user reaches the preferences step with no transcript at all.
+    if not data["completed_courses"] and not data["in_progress_courses"] and not data["major"]:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "No courses or major found in that PDF. It needs to be the DegreeWorks "
+                "audit itself (saved as a PDF, not a scan or screenshot) — a transcript "
+                "or class schedule will not work."
+            ),
+        )
+
+    return {"success": True, "data": data}
 
 
 @app.post("/api/recommendations", dependencies=[Depends(rate_limit)])

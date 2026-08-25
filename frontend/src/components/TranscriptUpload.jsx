@@ -1,11 +1,13 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useDropzone } from 'react-dropzone'
-import api from '../api'
+import api, { describeError } from '../api'
 
 const SCHOOL_COLOR = {
   'Georgia State University': '#2997FF',
   'Georgia Tech': '#B3A369',
 }
+
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 
 export default function TranscriptUpload({ school, onUpload, onBack }) {
   const [status, setStatus] = useState('idle')
@@ -31,7 +33,19 @@ export default function TranscriptUpload({ school, onUpload, onBack }) {
     document.head.appendChild(style)
   }, [])
 
-  const onDrop = useCallback(async (files) => {
+  const onDrop = useCallback(async (files, rejections) => {
+    // Without this, a rejected file silently does nothing and the page looks frozen.
+    if (rejections?.length) {
+      const code = rejections[0].errors?.[0]?.code
+      setStatus('error')
+      setError(
+        code === 'file-too-large'
+          ? 'That PDF is larger than 10 MB. Re-export just the DegreeWorks audit page.'
+          : 'That file is not a PDF. Export your DegreeWorks audit as a PDF and try again.'
+      )
+      return
+    }
+
     const file = files[0]
     if (!file) return
     setStatus('parsing')
@@ -42,23 +56,32 @@ export default function TranscriptUpload({ school, onUpload, onBack }) {
       const { data } = await api.post(
         `/api/parse-transcript?school=${encodeURIComponent(school)}`,
         form,
-        { headers: { 'Content-Type': 'multipart/form-data' } }
+        {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          // Fired by the retry interceptor when the backend is still waking.
+          onRetry: () => setStatus('waking'),
+        }
       )
       onUpload(data.data)
     } catch (err) {
       setStatus('error')
       setError(
-        err.response?.data?.detail ||
-        'Failed to parse transcript. Make sure you uploaded the correct DegreeWorks PDF.'
+        describeError(
+          err,
+          'Failed to parse transcript. Make sure you uploaded the correct DegreeWorks PDF.'
+        )
       )
     }
   }, [school, onUpload])
+
+  const busy = status === 'parsing' || status === 'waking'
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: { 'application/pdf': ['.pdf'] },
     maxFiles: 1,
-    disabled: status === 'parsing',
+    maxSize: MAX_UPLOAD_BYTES,
+    disabled: busy,
   })
 
   // pulse color as CSS variable
@@ -94,7 +117,7 @@ export default function TranscriptUpload({ school, onUpload, onBack }) {
         <div
           {...getRootProps()}
           className={`upload-pulse border-2 border-dashed rounded-3xl p-16 text-center cursor-pointer transition-all duration-300
-            ${status === 'parsing' ? 'pointer-events-none opacity-50' : ''}
+            ${busy ? 'pointer-events-none opacity-50' : ''}
           `}
           style={{
             '--pulse-color': pulseRgb,
@@ -103,13 +126,17 @@ export default function TranscriptUpload({ school, onUpload, onBack }) {
           }}
         >
           <input {...getInputProps()} />
-          {status === 'parsing' ? (
+          {busy ? (
             <div className="flex flex-col items-center gap-4">
               <div
                 className="w-10 h-10 border-2 border-t-transparent rounded-full animate-spin"
                 style={{ borderColor: `${accentColor} transparent transparent transparent` }}
               />
-              <p className="text-gray font-medium">Parsing your transcript…</p>
+              <p className="text-gray font-medium">
+                {status === 'waking'
+                  ? 'Waking the server — this can take up to a minute…'
+                  : 'Parsing your transcript…'}
+              </p>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-3">

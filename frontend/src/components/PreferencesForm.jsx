@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import api from '../api'
+import api, { describeError } from '../api'
 
 export default function PreferencesForm({ school, evalData, onResults, onBack }) {
   const [form, setForm] = useState({ career_goals: '', max_courses: 4, has_job: false })
@@ -32,7 +32,7 @@ export default function PreferencesForm({ school, evalData, onResults, onBack })
       onResults(data)
     } catch (err) {
       setStatus('error')
-      setError(err.response?.data?.detail || 'Something went wrong. Please try again.')
+      setError(describeError(err, 'Something went wrong. Please try again.'))
     }
   }
 

@@ -1,16 +1,23 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Hero from './components/Hero.jsx'
 import SchoolPicker from './components/SchoolPicker.jsx'
 import TranscriptUpload from './components/TranscriptUpload.jsx'
 import PreferencesForm from './components/PreferencesForm.jsx'
 import Results from './components/Results.jsx'
 import Navbar from './components/Navbar.jsx'
+import { warmUp } from './api'
 
 export default function App() {
   const [step, setStep] = useState('home') // home | school | upload | prefs | results
   const [school, setSchool] = useState(null)
   const [evalData, setEvalData] = useState(null)
   const [results, setResults] = useState(null)
+
+  // The free-tier backend sleeps after ~15 min idle. Start the wake on first
+  // paint so it finishes while the user picks a school, not during their upload.
+  useEffect(() => {
+    warmUp()
+  }, [])
 
   function handleStart() {
     setStep('school')
