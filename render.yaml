@@ -6,7 +6,9 @@ services:
     name: prereqpilot-api
     runtime: python
     plan: free            # free tier sleeps after ~15 min idle; bump to "starter" to stay warm
-    buildCommand: pip install -r requirements.txt
+    # requirements-dev.txt, not requirements.txt: the start command below runs
+    # uvicorn, which is a dev/server dependency and no longer a runtime import.
+    buildCommand: pip install -r requirements-dev.txt
     startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
     envVars:

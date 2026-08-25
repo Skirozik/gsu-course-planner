@@ -22,6 +22,7 @@ from utils.professor_ranking import (
     create_ranked_sections,
     format_ranking_display
 )
+import time
 import logging
 
 logger = logging.getLogger(__name__)
@@ -44,7 +45,8 @@ DEFAULT_TERM = _current_term()
 def get_ranked_sections(course_code: str,
                        sections_data: List[Dict],
                        school: str = "Georgia State University",
-                       term: str = None) -> List[SectionRanking]:
+                       term: str = None,
+                       deadline: Optional[float] = None) -> List[SectionRanking]:
     """
     Get sections for a course ranked by professor quality
 
@@ -61,6 +63,10 @@ def get_ranked_sections(course_code: str,
             }, ...]
         school: School name for RMP lookup
         term: Semester term (defaults to the current term)
+        deadline: optional time.monotonic() value after which no further RMP
+            lookups are started. Each lookup carries its own timeout and throttle,
+            so a course with many instructors can otherwise run for minutes.
+            Sections still rank with whatever ratings were collected.
 
     Returns:
         List of SectionRanking objects sorted by quality (best first)
@@ -92,6 +98,16 @@ def get_ranked_sections(course_code: str,
         if primary in seen or primary in ("TBA", "Unknown"):
             continue
         seen.add(primary)
+
+        # Stop starting new lookups once the budget is spent. Ranking degrades to
+        # "unrated" for the instructors we did not reach, which the ranker already
+        # handles, rather than the whole request timing out.
+        if deadline is not None and time.monotonic() >= deadline:
+            logger.warning(
+                "RMP budget exhausted for %s; ranking %d of %d instructors",
+                course_code, len(rmp_data_map), len(seen),
+            )
+            break
 
         # Search on the normalized "First Last" form (RMP matches it best) and
         # key the result by primary_name so create_ranked_sections finds it.

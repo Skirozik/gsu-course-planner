@@ -10,13 +10,6 @@ import logging
 from typing import Dict, List, Optional, Tuple
 from dotenv import load_dotenv
 
-# Try to import streamlit, but don't fail if it's not available
-try:
-    import streamlit as st
-    HAS_STREAMLIT = True
-except ImportError:
-    HAS_STREAMLIT = False
-
 from anthropic import Anthropic, APIError, AuthenticationError, RateLimitError
 
 # Setup logging
@@ -39,14 +32,10 @@ class APIKeyManager:
         Returns:
             API key string or None if not found
         """
-        # Try Streamlit secrets (for Streamlit Cloud)
-        if HAS_STREAMLIT:
-            try:
-                return st.secrets.get("ANTHROPIC_API_KEY")
-            except (KeyError, AttributeError, FileNotFoundError):
-                pass
-
-        # Try environment variables (set via system or .env)
+        # Environment variable, set by the host dashboard or a local .env file.
+        # A Streamlit-secrets branch used to sit above this and shadowed it: on a
+        # machine with a secrets file but no ANTHROPIC_API_KEY in it, st.secrets.get
+        # returned None and that None was returned directly, never reaching here.
         api_key = os.getenv("ANTHROPIC_API_KEY")
         if api_key:
             return api_key
@@ -82,6 +71,7 @@ class CourseRecommender:
     FALLBACK_MODEL = "claude-haiku-4-5-20251001"
     MAX_TOKENS = 1500
     TEMPERATURE = 0.7
+    REQUEST_TIMEOUT = float(os.getenv("ANTHROPIC_TIMEOUT", "20"))
     SYSTEM_PROMPT = (
         "You are an academic advisor. Respond with valid JSON only — "
         "no prose, no explanations, and no markdown code fences."
@@ -105,9 +95,17 @@ class CourseRecommender:
         if not is_valid:
             raise ValueError(f"Invalid API Key: {message}")
 
-        # Initialize Anthropic client
+        # Initialize Anthropic client.
+        # The SDK defaults to a 600s read timeout and 2 retries, and it retries
+        # timeouts — so an unbounded call can occupy a request for 30 minutes.
+        # generate_schedule also walks two models, so the wall clock is
+        # timeout x (max_retries + 1) x 2. Budgeted to stay well inside that.
         try:
-            self.client = Anthropic(api_key=self.api_key)
+            self.client = Anthropic(
+                api_key=self.api_key,
+                timeout=self.REQUEST_TIMEOUT,
+                max_retries=0,
+            )
             logger.info("✅ Anthropic client initialized")
         except Exception as e:
             logger.error(f"❌ Failed to initialize Anthropic client: {e}")
@@ -184,7 +182,6 @@ class CourseRecommender:
                     temperature=self.TEMPERATURE,
                     system=self.SYSTEM_PROMPT,
                     messages=[{"role": "user", "content": prompt}],
-                    timeout=30
                 )
                 logger.info(f"✅ Got response from {model}")
                 # Claude returns a list of content blocks; concatenate any text blocks.

@@ -5,10 +5,13 @@ Supports multiple majors and degree programs
 """
 
 import json
+import logging
 import os
 from typing import Dict, List, Optional, Tuple
 from pathlib import Path
 from utils.prerequisite_resolver import get_prerequisite_resolver, meets_minimum_grade
+
+logger = logging.getLogger(__name__)
 
 class CatalogLoader:
     """Loads and manages course catalogs for different majors and schools"""
@@ -35,7 +38,9 @@ class CatalogLoader:
     def load_all_catalogs(self) -> None:
         """Load all JSON catalog files from the catalog directory"""
         if not self.catalog_dir.exists():
-            print(f"Warning: Catalog directory not found: {self.catalog_dir}")
+            # Loud, because the consequence is silent: /api/recommendations falls back
+            # to the much smaller COURSE_DATABASE and simply returns worse advice.
+            logger.error("Catalog directory not found: %s", self.catalog_dir)
             return
         
         json_files = self.catalog_dir.glob("*.json")

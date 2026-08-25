@@ -1,3 +1,11 @@
+
+import os
+import sys
+
+# Run as `streamlit run legacy/streamlit_app.py`, sys.path[0] is this directory,
+# so the repo root has to be added before any `from utils...` import resolves.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import streamlit as st
 import json
 import os

@@ -51,7 +51,9 @@ catalog_loader = get_catalog_loader()
 # ---------------------------------------------------------------------------
 # Lightweight in-memory rate limiter (per client IP, sliding window).
 # Protects the endpoints that spend Anthropic credits. Tune via env vars.
-# Note: in-memory state is per-process; fine for a single-instance deploy.
+# Note: this is a best-effort per-process brake, not a global limit -- with more
+# than one instance the effective ceiling multiplies. The real guard against
+# runaway spend is the limit set in the Anthropic Console.
 # ---------------------------------------------------------------------------
 RATE_LIMIT_MAX = int(os.getenv("RATE_LIMIT_MAX", "20"))        # requests...
 RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", "60"))  # ...per this many seconds
@@ -59,6 +61,16 @@ _rate_hits: defaultdict = defaultdict(deque)
 
 # Matches the limit advertised on the upload screen.
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+
+# Anthropic call budgets. The SDK defaults to a 600s read timeout with 2 retries
+# and it retries timeouts, so an unbounded call can hold a request for ~30 minutes.
+ANTHROPIC_TIMEOUT = float(os.getenv("ANTHROPIC_TIMEOUT", "25"))
+ANTHROPIC_MAX_RETRIES = int(os.getenv("ANTHROPIC_MAX_RETRIES", "1"))
+
+# /api/sections fans out to RateMyProfessors once per instructor, each with its own
+# timeout and throttle, so its worst case grows with the size of the teaching staff.
+# This caps the whole handler; sections still rank fine with partial ratings.
+SECTIONS_BUDGET_S = float(os.getenv("SECTIONS_BUDGET_S", "45"))
 
 
 def rate_limit(request: Request):
@@ -74,6 +86,12 @@ def rate_limit(request: Request):
     hits = _rate_hits[client_ip]
     while hits and hits[0] <= now - RATE_LIMIT_WINDOW:
         hits.popleft()
+
+    # Drop the key once its window empties. Pruning timestamps inside a deque never
+    # removed the deque itself, so the map grew without bound for the lifetime of
+    # the process -- one entry per distinct client IP ever seen.
+    if not hits:
+        del _rate_hits[client_ip]
 
     if len(hits) >= RATE_LIMIT_MAX:
         raise HTTPException(
@@ -112,7 +130,16 @@ class PreferencesRequest(BaseModel):
 @app.get("/api/health")
 def health():
     api_key = APIKeyManager.get_api_key()
-    return {"status": "ok", "has_api_key": bool(api_key)}
+    catalogs = getattr(catalog_loader, "catalogs", {}) or {}
+    # Course counts prove the data files shipped with the deployment. If the
+    # catalog directory is missing, /api/recommendations silently degrades to the
+    # much smaller COURSE_DATABASE, which is otherwise invisible from outside.
+    return {
+        "status": "ok",
+        "has_api_key": bool(api_key),
+        "catalogs": len(catalogs),
+        "courses": sum(len(c.get("courses", {})) for c in catalogs.values()),
+    }
 
 
 def normalize_eval_data(raw: dict) -> dict:
@@ -282,7 +309,11 @@ def chat(req: ChatRequest):
         raise HTTPException(status_code=503, detail="API key not configured")
 
     from anthropic import Anthropic
-    client = Anthropic(api_key=api_key)
+    client = Anthropic(
+        api_key=api_key,
+        timeout=ANTHROPIC_TIMEOUT,
+        max_retries=ANTHROPIC_MAX_RETRIES,
+    )
 
     ctx = req.context or {}
     recs = ctx.get("recommended_courses", [])
@@ -382,7 +413,12 @@ def get_sections(course: str, school: str = "Georgia State University"):
     if not raw_sections:
         return {"course": course, "sections": []}
 
-    ranked = get_ranked_sections(course, raw_sections, school=school)
+    ranked = get_ranked_sections(
+        course,
+        raw_sections,
+        school=school,
+        deadline=time.monotonic() + SECTIONS_BUDGET_S,
+    )
     sections = [
         {
             "section": s.section,
@@ -416,7 +452,11 @@ def plan_feedback(req: PlanFeedbackRequest):
         raise HTTPException(status_code=400, detail="No courses selected")
 
     from anthropic import Anthropic
-    client = Anthropic(api_key=api_key)
+    client = Anthropic(
+        api_key=api_key,
+        timeout=ANTHROPIC_TIMEOUT,
+        max_retries=ANTHROPIC_MAX_RETRIES,
+    )
 
     def _credits(c):
         try:

@@ -9,6 +9,7 @@ Note: Uses public RMP GraphQL API (no official API key required)
 
 import requests
 import json
+import tempfile
 from pathlib import Path
 from typing import Dict, List, Optional
 import time
@@ -46,9 +47,21 @@ class RateMyProfessorAPI:
 
         # Disk-backed cache so professor lookups survive process restarts.
         # (lru_cache only lives for the lifetime of the process.)
+        #
+        # Reads prefer a writable copy and fall back to whatever shipped with the
+        # deployment; writes always go somewhere writable. On a read-only
+        # filesystem -- any serverless host -- the bundled path cannot be written,
+        # and writing into the bundle would not persist anyway.
+        data_dir = Path(__file__).resolve().parent.parent / "data"
         if cache_file is None:
-            cache_file = Path(__file__).resolve().parent.parent / "data" / "rmp_cache.json"
-        self.cache_file = Path(cache_file)
+            self.cache_file = Path(tempfile.gettempdir()) / "rmp_cache.json"
+            # rmp_cache.json is gitignored, so it exists only on a dev machine.
+            # rmp_cache.seed.json is the committed one, if there is a committed
+            # one -- deployments start with an empty cache until there is.
+            self.seed_files = [data_dir / "rmp_cache.seed.json", data_dir / "rmp_cache.json"]
+        else:
+            self.cache_file = Path(cache_file)
+            self.seed_files = []
         self._persistent_cache: Dict[str, Optional[Dict]] = self._load_persistent_cache()
 
     @staticmethod
@@ -58,12 +71,15 @@ class RateMyProfessorAPI:
 
     def _load_persistent_cache(self) -> Dict[str, Optional[Dict]]:
         """Load the on-disk professor cache, tolerating a missing/corrupt file."""
-        try:
-            if self.cache_file.exists():
-                with open(self.cache_file, "r", encoding="utf-8") as f:
-                    return json.load(f)
-        except (OSError, json.JSONDecodeError) as e:
-            logger.warning(f"Could not load RMP cache ({self.cache_file}): {e}")
+        for path in [self.cache_file, *getattr(self, "seed_files", [])]:
+            if not path:
+                continue
+            try:
+                if path.exists():
+                    with open(path, "r", encoding="utf-8") as f:
+                        return json.load(f)
+            except (OSError, json.JSONDecodeError) as e:
+                logger.warning(f"Could not load RMP cache ({path}): {e}")
         return {}
 
     def _save_persistent_cache(self) -> None:
@@ -73,7 +89,9 @@ class RateMyProfessorAPI:
             with open(self.cache_file, "w", encoding="utf-8") as f:
                 json.dump(self._persistent_cache, f, indent=2)
         except OSError as e:
-            logger.warning(f"Could not save RMP cache ({self.cache_file}): {e}")
+            # Expected on a read-only filesystem. Debug, not warning: this fires
+            # once per professor lookup and would otherwise flood the logs.
+            logger.debug(f"Could not save RMP cache ({self.cache_file}): {e}")
 
     def cache_stats(self) -> Dict[str, int]:
         """Return basic stats about the persistent cache."""
@@ -152,7 +170,12 @@ class RateMyProfessorAPI:
             )
 
             if not edges:
+                # A definitive "no such professor" is worth remembering. Without
+                # this, every unmatched instructor re-queried RMP on every single
+                # request, forever -- only successes were ever cached.
                 logger.info(f"No RMP data found for: {name}")
+                self._persistent_cache[cache_key] = None
+                self._save_persistent_cache()
                 return None
 
             # Build candidate list
