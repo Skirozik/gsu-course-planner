@@ -160,9 +160,7 @@ isn't tested.
 ## Deployment
 
 - **Backend → Render**, via the [`render.yaml`](render.yaml) blueprint. `ANTHROPIC_API_KEY` is set
-  in the dashboard, never in git. The build installs
-  [`requirements-dev.txt`](requirements-dev.txt), because the start command runs `uvicorn`, which is
-  a server dependency rather than a runtime import.
+  in the dashboard, never in git.
 - **Frontend → Vercel**, root directory `frontend`, Vite preset.
   [`frontend/vercel.json`](frontend/vercel.json) rewrites `/api/*` to the backend so requests stay
   same-origin.

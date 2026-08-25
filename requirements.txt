@@ -2,6 +2,12 @@
 # Everything here is reachable from an endpoint; see requirements-dev.txt for
 # tooling and legacy/requirements-streamlit.txt for the retired prototype.
 fastapi>=0.111.0
+# The ASGI server. It is not imported by any endpoint, but it IS the start
+# command, so it has to be installable from whichever file the host actually
+# builds from. Render blueprint services only pick up render.yaml changes when
+# blueprint auto-sync is on; otherwise the dashboard's stored build command runs
+# against this file, and a missing uvicorn means the container never boots.
+uvicorn[standard]>=0.29.0
 python-multipart>=0.0.9
 anthropic>=0.40.0
 pdfplumber>=0.11.0

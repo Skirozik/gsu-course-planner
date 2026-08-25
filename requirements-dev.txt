@@ -1,6 +1,5 @@
-# Local development and test tooling, plus the ASGI server. Render's start command
-# runs uvicorn, so its build installs this file rather than requirements.txt.
+# Local development and test tooling. The ASGI server lives in requirements.txt
+# because it is the deployed start command, not because anything imports it.
 -r requirements.txt
-uvicorn[standard]>=0.29.0
 pytest>=8.0.0
 beautifulsoup4>=4.12.3   # utils/ scrapers, run offline; no endpoint imports them
