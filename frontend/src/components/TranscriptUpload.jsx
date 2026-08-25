@@ -12,6 +12,7 @@ const MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 export default function TranscriptUpload({ school, onUpload, onBack }) {
   const [status, setStatus] = useState('idle')
   const [error, setError] = useState(null)
+  const [attempt, setAttempt] = useState(0)
 
   const accentColor = SCHOOL_COLOR[school] ?? '#2997FF'
 
@@ -50,6 +51,7 @@ export default function TranscriptUpload({ school, onUpload, onBack }) {
     if (!file) return
     setStatus('parsing')
     setError(null)
+    setAttempt(0)
     const form = new FormData()
     form.append('file', file)
     try {
@@ -59,7 +61,10 @@ export default function TranscriptUpload({ school, onUpload, onBack }) {
         {
           headers: { 'Content-Type': 'multipart/form-data' },
           // Fired by the retry interceptor when the backend is still waking.
-          onRetry: () => setStatus('waking'),
+          onRetry: (n) => {
+            setStatus('waking')
+            setAttempt(n)
+          },
         }
       )
       onUpload(data.data)
@@ -134,7 +139,7 @@ export default function TranscriptUpload({ school, onUpload, onBack }) {
               />
               <p className="text-gray font-medium">
                 {status === 'waking'
-                  ? 'Waking the server — this can take up to a minute…'
+                  ? `Waking the server — this can take up to a minute… (attempt ${attempt})`
                   : 'Parsing your transcript…'}
               </p>
             </div>

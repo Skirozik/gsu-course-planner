@@ -12,7 +12,14 @@ const api = axios.create({
 // it while booting. Those are worth retrying. A 4xx is the server telling us the
 // request itself is wrong, so retrying it just repeats the same failure.
 const RETRY_STATUSES = new Set([502, 503, 504])
-const MAX_RETRIES = 2
+
+// The retry budget has to span an entire cold start, or it just fails faster
+// than doing nothing. A free-tier Render instance takes 30-60s to wake, and
+// during the boot it refuses connections rather than holding them open — so the
+// client burns through attempts in seconds unless the waits are this long.
+const RETRY_WINDOW_MS = 90000
+const MAX_ATTEMPTS = 8
+const BACKOFF_MS = [2000, 5000, 10000, 15000, 20000, 20000, 20000]
 
 function isRetryable(err) {
   if (err.code === 'ECONNABORTED' || err.code === 'ERR_NETWORK') return true
@@ -23,13 +30,20 @@ api.interceptors.response.use(undefined, async (err) => {
   const config = err.config
   if (!config || !isRetryable(err)) return Promise.reject(err)
 
-  config._retryCount = (config._retryCount || 0) + 1
-  if (config._retryCount > MAX_RETRIES) return Promise.reject(err)
+  // Deadline is set on the first failure so the window covers the whole wake,
+  // not each attempt individually.
+  if (!config._deadline) config._deadline = Date.now() + RETRY_WINDOW_MS
+  config._attempt = (config._attempt || 1) + 1
+
+  const wait = BACKOFF_MS[Math.min(config._attempt - 2, BACKOFF_MS.length - 1)]
+  const outOfAttempts = config._attempt > MAX_ATTEMPTS
+  const outOfTime = Date.now() + wait >= config._deadline
+  if (outOfAttempts || outOfTime) return Promise.reject(err)
 
   // Let the caller show "waking up" instead of a spinner that looks stuck.
-  if (typeof config.onRetry === 'function') config.onRetry(config._retryCount)
+  if (typeof config.onRetry === 'function') config.onRetry(config._attempt)
 
-  await new Promise((resolve) => setTimeout(resolve, 2000 * config._retryCount))
+  await new Promise((resolve) => setTimeout(resolve, wait))
   return api(config)
 })
 
@@ -60,7 +74,11 @@ export function describeError(err, fallback) {
   }
 
   if (!err.response) {
-    return 'Could not reach the server. Check your connection and try again.'
+    // Distinguish "your wifi is off" from "we waited out a full cold start and
+    // it never came up" — the second is not something the user can fix.
+    return err.config?._attempt > 1
+      ? 'The server did not come back up after 90 seconds. It may be down — please try again in a few minutes.'
+      : 'Could not reach the server. Check your connection and try again.'
   }
 
   const status = err.response.status
