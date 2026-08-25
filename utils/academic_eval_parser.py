@@ -8,6 +8,7 @@ import re
 import json
 import os
 from typing import Dict, List, Optional
+from utils.prerequisite_resolver import grade_value, is_passing_grade
 from io import BytesIO
 
 try:
@@ -260,13 +261,6 @@ _COURSE_RE = re.compile(
     re.IGNORECASE,
 )
 
-_GRADE_ORDER = {
-    "A+": 13, "A": 12, "A-": 11,
-    "B+": 10, "B": 9,  "B-": 8,
-    "C+": 7,  "C": 6,  "C-": 5,
-    "D+": 4,  "D": 3,  "D-": 2,
-    "F": 1,
-}
 _SKIP_GRADES = {"NA", "IP", "W", "-W"}
 
 
@@ -295,10 +289,15 @@ def _parse_completed_courses(text: str) -> List[Dict]:
             seen[code] = course
         else:
             # Keep the better grade (e.g. retake)
-            if _GRADE_ORDER.get(grade, 0) > _GRADE_ORDER.get(seen[code]["grade"], 0):
+            if grade_value(grade) > grade_value(seen[code]["grade"]):
                 seen[code] = course
 
-    return list(seen.values())
+    # Drop attempts that earned no credit. A DegreeWorks audit lists failed courses
+    # in its "Insufficient, Withdrawn, Repeated" block, and counting them as
+    # completed both inflates the course history and lets a failed course satisfy a
+    # prerequisite. Dedup runs first, so a course later passed keeps the passing
+    # attempt; only courses whose *best* attempt was an F are dropped.
+    return [c for c in seen.values() if is_passing_grade(c["grade"])]
 
 
 # ---------------------------------------------------------------------------

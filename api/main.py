@@ -182,8 +182,24 @@ def get_recommendations(req: PreferencesRequest):
         raise HTTPException(status_code=503, detail="API key not configured")
 
     eval_data = req.eval_data
-    completed = [c.get("course_code", "") for c in eval_data.get("completed_courses", [])]
-    completed += [c.get("course_code", "") for c in eval_data.get("in_progress_courses", [])]
+    completed_records = eval_data.get("completed_courses", []) or []
+    in_progress_records = eval_data.get("in_progress_courses", []) or []
+
+    # Two questions that were previously collapsed into one list:
+    #   taken     - is there any record of this course? (so we do not re-recommend it)
+    #   satisfied - does that record clear the prerequisite's minimum grade?
+    # A D in CSC 2720 earns credit toward the degree, so the course is "taken", but
+    # it does not satisfy a prerequisite requiring a C. An in-progress enrolment has
+    # no grade yet and counts as satisfying, because the student will have finished
+    # it before the semester being planned.
+    taken = {(c.get("course_code") or "").upper().strip() for c in completed_records}
+    in_progress_codes = [(c.get("course_code") or "").upper().strip() for c in in_progress_records]
+    taken |= set(in_progress_codes)
+    taken.discard("")
+    grades = {
+        (c.get("course_code") or "").upper().strip(): c.get("grade")
+        for c in completed_records
+    }
 
     # Get available courses from catalog
     available_courses = []
@@ -192,8 +208,17 @@ def get_recommendations(req: PreferencesRequest):
 
     if catalog:
         # courses is a dict: { "CSC 1301": { name, credits, prerequisites, ... } }
+        # Checked against the catalog's own prerequisites, not COURSE_DATABASE:
+        # only 30 of 64 GSU CS courses and none of the 18 Georgia Tech courses exist
+        # in COURSE_DATABASE, and get_prerequisites returns [] for anything absent,
+        # which made the filter pass every unknown course unconditionally.
         for code, info in catalog.get("courses", {}).items():
-            if code not in completed and check_prerequisites_met(code, set(completed)).get("can_take"):
+            if code in taken:
+                continue
+            eligibility = catalog_loader.check_prerequisites_with_grades(
+                req.school, major, code, completed_records, in_progress_codes
+            )
+            if eligibility.get("can_take"):
                 available_courses.append({
                     "course_code": code,
                     "course_name": info.get("name", code),
@@ -201,7 +226,9 @@ def get_recommendations(req: PreferencesRequest):
                 })
     else:
         for code, info in COURSE_DATABASE.items():
-            if code not in completed and check_prerequisites_met(code, set(completed)).get("can_take"):
+            if code in taken:
+                continue
+            if check_prerequisites_met(code, taken, grades).get("can_take"):
                 available_courses.append({
                     "course_code": code,
                     "course_name": info.get("name", code),
@@ -234,7 +261,14 @@ def get_recommendations(req: PreferencesRequest):
             available_courses=available_courses,
             degree_requirements=degree_requirements,
         )
-        return {"success": True, "recommendations": result, "available_courses": available_courses}
+        return {
+            "success": True,
+            "recommendations": result,
+            "available_courses": available_courses,
+            # False means the catalog was missing and we silently served the much
+            # smaller COURSE_DATABASE instead. Surfaced so it is diagnosable.
+            "catalog_used": bool(catalog),
+        }
     except Exception as e:
         import traceback
         traceback.print_exc()

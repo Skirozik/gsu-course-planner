@@ -8,7 +8,7 @@ import json
 import os
 from typing import Dict, List, Optional, Tuple
 from pathlib import Path
-from utils.prerequisite_resolver import get_prerequisite_resolver
+from utils.prerequisite_resolver import get_prerequisite_resolver, meets_minimum_grade
 
 class CatalogLoader:
     """Loads and manages course catalogs for different majors and schools"""
@@ -475,17 +475,28 @@ class CatalogLoader:
         course_info = courses[course_code]
         prereq_text = course_info.get("prerequisites_raw", "")
 
-        # If no raw prerequisite text, fall back to simple check
+        # No raw prerequisite text — evaluate the structured list instead. This is
+        # the only path Georgia Tech has: none of its catalog courses carry
+        # prerequisites_raw, but 16 of 18 carry a structured prerequisites list.
+        # It has to be grade-aware here, because the resolver never sees it.
         if not prereq_text:
-            simple_result = self.check_prerequisites_met(school, major, course_code,
-                                              [c['course_code'] for c in completed_courses])
-            # Convert to new format
+            prereqs = self.get_prerequisites(school, major, course_code)
+            satisfied = {
+                c.get("course_code", "").upper().strip()
+                for c in completed_courses
+                if meets_minimum_grade(c.get("grade"))
+            }
+            satisfied |= {str(c).upper().strip() for c in in_progress_courses}
+
+            met = [p for p in prereqs if p.upper().strip() in satisfied]
+            missing = [p for p in prereqs if p.upper().strip() not in satisfied]
+
             return {
-                "eligible": simple_result.get("can_take", False),
-                "can_take": simple_result.get("can_take", False),
-                "met_requirements": simple_result.get("met", []),
-                "missing_requirements": simple_result.get("missing", []),
-                "reason": "All prerequisites met" if simple_result.get("can_take") else f"Missing: {', '.join(simple_result.get('missing', []))}",
+                "eligible": not missing,
+                "can_take": not missing,
+                "met_requirements": met,
+                "missing_requirements": missing,
+                "reason": "All prerequisites met" if not missing else f"Missing: {', '.join(missing)}",
                 "prerequisites_raw": ""
             }
 

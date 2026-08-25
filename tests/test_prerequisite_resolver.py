@@ -195,7 +195,12 @@ def test_multiple_and_prerequisites():
 
 
 def test_in_progress_courses():
-    """Test that in-progress courses don't count as prerequisites"""
+    """In-progress courses DO satisfy prerequisites for the next semester.
+
+    The app plans the semester *after* the current one, so a course in progress
+    will be finished by then, and Banner permits registering on an in-progress
+    prerequisite. The plan is therefore contingent on the student passing.
+    """
     print("=" * 70)
     print("TEST 5: In-Progress Courses")
     print("=" * 70)
@@ -210,7 +215,20 @@ def test_in_progress_courses():
     print(f"\nStudent currently taking CSC 1301:")
     print(f"  Eligible: {result['eligible']}")
     print(f"  Reason: {result['reason']}")
-    assert result['eligible'] == False
+    assert result['eligible'] == True
+
+    # But a finished attempt below the minimum still does not satisfy it.
+    below = resolver.evaluate_eligibility(
+        prereq_text, [{"course_code": "CSC 1301", "grade": "D"}], []
+    )
+    assert below['eligible'] == False
+
+    # A retake: failed once, currently enrolled again. The in-progress attempt
+    # supersedes the earlier grade rather than being shadowed by it.
+    retake = resolver.evaluate_eligibility(
+        prereq_text, [{"course_code": "CSC 1301", "grade": "D"}], ["CSC 1301"]
+    )
+    assert retake['eligible'] == True
 
     print("\n✅ TEST 5 PASSED\n")
 

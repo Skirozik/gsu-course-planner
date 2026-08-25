@@ -16,6 +16,48 @@ from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
 
+# The single grade ladder for the whole project. academic_eval_parser imports this
+# rather than keeping its own copy — the two were byte-identical and drifting apart
+# would mean a retake is ranked one way and a prerequisite judged another.
+GRADE_VALUES = {
+    'A+': 13, 'A': 12, 'A-': 11,
+    'B+': 10, 'B': 9, 'B-': 8,
+    'C+': 7, 'C': 6, 'C-': 5,
+    'D+': 4, 'D': 3, 'D-': 2,
+    'F': 1,
+}
+
+# Grades that carry no completed attempt: withdrawals and not-yet-graded enrolments.
+NON_ATTEMPT_GRADES = {'NA', 'IP', 'W', '-W', 'TR', 'T', 'I'}
+
+# A prerequisite is satisfied at C or better unless the catalog says otherwise.
+# GSU's CS catalog states "with a C or higher" in its prerequisite text, and every
+# entry in COURSE_DATABASE carries min_grade "C".
+DEFAULT_MIN_PREREQ_GRADE = 'C'
+
+
+def grade_value(grade: Optional[str]) -> int:
+    """Rank a letter grade. Unknown or non-attempt grades rank below F."""
+    if not grade:
+        return 0
+    return GRADE_VALUES.get(grade.upper().strip(), 0)
+
+
+def is_passing_grade(grade: Optional[str]) -> bool:
+    """True if the attempt earned credit. D counts for credit at GSU; F does not."""
+    return grade_value(grade) >= GRADE_VALUES['D-']
+
+
+def meets_minimum_grade(earned: Optional[str], minimum: Optional[str] = None) -> bool:
+    """
+    True if `earned` satisfies a prerequisite requiring `minimum`.
+
+    This is the distinction the app was missing: a D earns credit toward the degree
+    but does not satisfy a prerequisite that requires a C.
+    """
+    return grade_value(earned) >= grade_value(minimum or DEFAULT_MIN_PREREQ_GRADE)
+
+
 @dataclass
 class PrerequisiteRequirement:
     """Represents a single prerequisite requirement"""
@@ -45,14 +87,9 @@ class PrerequisiteResolver:
     against student transcripts.
     """
 
-    # Grade hierarchy for comparison
-    GRADE_VALUES = {
-        'A+': 13, 'A': 12, 'A-': 11,
-        'B+': 10, 'B': 9, 'B-': 8,
-        'C+': 7, 'C': 6, 'C-': 5,
-        'D+': 4, 'D': 3, 'D-': 2,
-        'F': 1
-    }
+    # Kept as a class attribute for backwards compatibility; the module-level
+    # GRADE_VALUES above is the single source of truth.
+    GRADE_VALUES = GRADE_VALUES
 
     def __init__(self):
         pass
@@ -248,23 +285,30 @@ class PrerequisiteResolver:
         """
         met = []
         missing = []
+        in_progress_codes = {str(c).upper().strip() for c in in_progress}
 
         for req in group.requirements:
             course_code = req.course_code.upper().strip()
 
-            # Check if completed
-            if course_code in transcript:
+            # In-progress is checked FIRST, and deliberately so. A retake is both
+            # "completed with a low grade" and "currently enrolled" at the same
+            # time; checking the transcript first would judge the student on the
+            # attempt they are in the middle of replacing.
+            if course_code in in_progress_codes:
+                # This app plans the *next* semester, by which point the course is
+                # finished — and Banner itself permits registering on an in-progress
+                # prerequisite. The tradeoff is that the plan assumes a pass.
+                met.append(req)
+            elif course_code in transcript:
                 grade = transcript[course_code]
 
                 # Check if grade meets minimum requirement
                 if self._meets_grade_requirement(grade, req.min_grade):
                     met.append(req)
                 else:
-                    # Completed but grade too low
+                    # Completed but grade too low. This is the case that matters:
+                    # a D earns credit but does not clear a "C or higher" prereq.
                     missing.append(req)
-            elif course_code in [c.upper().strip() for c in in_progress]:
-                # Currently taking - counts as not met (can't use as prereq yet)
-                missing.append(req)
             else:
                 # Not taken at all
                 missing.append(req)

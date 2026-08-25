@@ -4,6 +4,7 @@ Contains prerequisite information for Computer Science and related courses
 """
 
 from typing import Dict, List, Optional
+from utils.prerequisite_resolver import meets_minimum_grade
 
 # Comprehensive prerequisite database for CS and related courses
 # Format: course_code -> {name, credits, prerequisites, corequisites, description}
@@ -392,28 +393,52 @@ def get_all_prerequisites(course_code: str, visited: set = None) -> List[str]:
     return all_prereqs
 
 
-def check_prerequisites_met(course_code: str, completed_courses: List[str]) -> Dict:
+def check_prerequisites_met(
+    course_code: str,
+    completed_courses: List[str],
+    grades: Optional[Dict[str, str]] = None,
+) -> Dict:
     """
     Check if prerequisites are met for a given course
+
+    Args:
+        course_code: the course to test eligibility for
+        completed_courses: course codes the student has taken or is taking
+        grades: optional {course_code: letter grade}. When supplied, a prerequisite
+            counts only if the grade clears this course's ``min_grade`` — a D earns
+            credit toward the degree but does not unlock a course requiring a C.
+            Codes absent from the mapping (an in-progress enrolment, say) are
+            treated as satisfying, because there is no grade to judge yet.
 
     Returns:
         Dict with:
         - can_take: bool
         - met: list of met prerequisites
         - missing: list of missing prerequisites
+        - below_grade: prerequisites taken but not at the required grade
     """
     course_code = course_code.upper().strip()
-    completed_upper = [c.upper().strip() for c in completed_courses]
+    completed_upper = {c.upper().strip() for c in completed_courses}
 
     prereqs = get_prerequisites(course_code)
+    min_grade = COURSE_DATABASE.get(course_code, {}).get("min_grade")
+    grade_map = {k.upper().strip(): v for k, v in (grades or {}).items()}
 
-    met = [p for p in prereqs if p in completed_upper]
-    missing = [p for p in prereqs if p not in completed_upper]
+    met, missing, below_grade = [], [], []
+    for p in prereqs:
+        if p not in completed_upper:
+            missing.append(p)
+        elif grades is not None and p in grade_map and not meets_minimum_grade(grade_map[p], min_grade):
+            below_grade.append(p)
+            missing.append(p)
+        else:
+            met.append(p)
 
     return {
         "can_take": len(missing) == 0,
         "met": met,
         "missing": missing,
+        "below_grade": below_grade,
         "all_prerequisites": prereqs
     }
 
